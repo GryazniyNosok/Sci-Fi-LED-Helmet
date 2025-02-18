@@ -3,7 +3,12 @@
 #include <BLEServer.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_NeoMatrix.h>
 
+#ifndef PSTR
+ #define PSTR // Make Arduino Due happy
+#endif
 
 #define PIN1        4        // Pin where NeoPixels are connected. Was 6. 
 #define PIN2        5        //Works for ESP32
@@ -15,6 +20,17 @@ Adafruit_NeoPixel strip1(NUMPIXELS_PER_STRIP, PIN1, NEO_GRB + NEO_KHZ800);
 Adafruit_NeoPixel strip2(NUMPIXELS_PER_STRIP, PIN2, NEO_GRB + NEO_KHZ800);
 
 
+Adafruit_NeoMatrix matrix1 = Adafruit_NeoMatrix(15, 8, PIN1,
+  NEO_MATRIX_BOTTOM     + NEO_MATRIX_RIGHT +
+  NEO_MATRIX_COLUMNS + NEO_MATRIX_ZIGZAG,
+  NEO_RGB            + NEO_KHZ800);
+
+Adafruit_NeoMatrix matrix2 = Adafruit_NeoMatrix(15, 8, PIN2,
+  NEO_MATRIX_TOP     + NEO_MATRIX_LEFT +
+  NEO_MATRIX_COLUMNS + NEO_MATRIX_ZIGZAG,
+  NEO_RGB            + NEO_KHZ800);
+
+//sudo chmod a+rw /dev/ttyUSB0
 int Red = 163;
 int Green = 6;
 int Blue = 163;
@@ -25,6 +41,9 @@ bool deviceConnected = false;
 bool oldDeviceConnected = false;
 uint32_t value = 0;
 String oldcolour;
+
+int x    = matrix1.width();
+int pass = 0;
 
 
 #define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
@@ -55,7 +74,19 @@ class MyServerCallbacks: public BLEServerCallbacks {
 
 // };
 
-//int diagonalarray = {}
+
+byte const unsigned long full[8] =
+{
+0x7FFF,
+0x7FFF,
+0x7FFF,
+0x7FFF,
+0x7FFF,
+0x7FFF,
+0x0000,
+0x0000
+};
+
 byte const unsigned long newBlinking[3][8] =
 {
   {
@@ -158,7 +189,17 @@ byte const unsigned long happy[3][8] =
   }
 };
 
-
+byte const unsigned long boyk[8] =
+{
+  0x0000,  // 000000000000000
+  0x3E3E,  // 011111000111110
+  0x1634,  // 001011000110100
+  0x0630,  // 000011000110000
+  0x0000,  // 000000000000000
+  0x1002,  // 001000000000010
+  0x2494,  // 010010010010100
+  0x0360   // 000001101100000
+};
 
 
 int getLEDIndex(int x, int y, bool flip = false) {
@@ -339,26 +380,9 @@ strip2.show();
 
 }
 
-// void renderPixels(int x[8], int y[8], int activeLEDs, int onOrOff[8])
-// {
-//   for(int n = 0; n < activeLEDs; n++)
-//   {
-//     strip1.setPixelColor(getLEDIndex(x[n],y[n], true), strip1.Color(163,6,163));
-//   }
 
-//   strip1.show();
-//   delay(40);
-
-//   for(int n = 0; n < activeLEDs; n++)
-//   {
-//     if(!onOrOff[n])
-//     {
-//       strip1.setPixelColor(getLEDIndex(x[n],y[n], true), strip1.Color(0,0,0));
-//     }
-//   }
-
-// }
     
+
 
 
 void setup() {
@@ -369,12 +393,21 @@ void setup() {
   strip2.show();
   delay(1000);
 
+  matrix1.begin();
+  matrix1.setTextWrap(false);
+  matrix1.setBrightness(40);
+  matrix1.setTextColor(matrix1.Color(3, 248, 248));
+  matrix2.begin();
+  matrix2.setTextWrap(false);
+  matrix2.setBrightness(40);
+  matrix2.setTextColor(matrix2.Color(3, 248, 248));
   //renderFrame(newBlinking);
   //lineByLineAnimation(newBlinking);
   //straightLineAnimation(newBlinking);
     // Create the BLE Device
-  BLEDevice::init("ESP32");
+  BLEDevice::init("ProotBrain");
 
+  
   // Create the BLE Server
   pServer = BLEDevice::createServer();
   pServer->setCallbacks(new MyServerCallbacks());
@@ -405,7 +438,25 @@ void setup() {
 
 
 
- 
+
+for(int y = 0; y < 57; y++)
+{
+matrix1.fillScreen(0);
+matrix2.fillScreen(0);
+  matrix1.setCursor(x, 0);
+  matrix2.setCursor(x, 0);
+  matrix1.print(F("Loading"));
+  matrix2.print(F("Loading"));
+  if(--x < -40) { //-36
+    x = matrix1.width();
+    x = matrix2.width();
+    matrix1.setTextColor(matrix1.Color(163, 163, 6));
+    matrix2.setTextColor(matrix2.Color(163, 163, 6));
+  }
+  matrix1.show();
+  matrix2.show();
+  delay(60);
+}
  for(int k = 0; k < HEIGHT+WIDTH-1;k++)  //Combination of both
   {
     for(int x = 0; x < WIDTH;x++)
@@ -445,26 +496,40 @@ void setup() {
 strip1.show();
 strip2.show();
 delay(2000);
+
+
+
+
+diagonalChange(boyk, 163,6,163);
+
+delay(1000);
+
+
+
 }
 
-void loop() {
-
-  String newcolour;
-  newcolour = pCharacteristic->getValue();
+void loop(){
 
 
-  if(newcolour != oldcolour)
-  {
-      Serial.print("Red: ");
-      Serial.println(newcolour.substring(0,3).toInt());
-      Serial.print("Green: ");
-      Serial.println(newcolour.substring(4,8).toInt());
-      Serial.print("Blue: ");
-      Serial.println(newcolour.substring(8,12).toInt());
-      diagonalChange(newBlinking[0], newcolour.substring(0,3).toInt(), newcolour.substring(4,8).toInt(), newcolour.substring(8,12).toInt());    
-      oldcolour = newcolour;
-  }
-  delay(1000);
+
+  // String newcolour;
+  //  newcolour = pCharacteristic->getValue();
+
+
+  // if(newcolour != oldcolour)
+  // {
+  //     Serial.print("Red: ");
+  //     Serial.println(newcolour.substring(0,3).toInt());
+  //     Serial.print("Green: ");
+  //     Serial.println(newcolour.substring(4,8).toInt());
+  //     Serial.print("Blue: ");
+  //     Serial.println(newcolour.substring(8,12).toInt());
+  //     diagonalChange(newBlinking[0], newcolour.substring(0,3).toInt(), newcolour.substring(4,8).toInt(), newcolour.substring(8,12).toInt());    
+  //     oldcolour = newcolour;
+  // }
+
+  
+
   // switch (colour){
   //   case 1:
   //   Serial.println("Red");
