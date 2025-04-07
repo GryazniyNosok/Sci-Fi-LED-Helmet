@@ -37,17 +37,20 @@ int Blue = 163;
 
 BLEServer* pServer = NULL;
 BLECharacteristic* pCharacteristic = NULL;
+
 bool deviceConnected = false;
 bool oldDeviceConnected = false;
+
 uint32_t value = 0;
 String oldcolour;
 
-int x    = matrix1.width();
+int x = matrix1.width();
 int pass = 0;
 
 
 #define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
+
 
 class MyServerCallbacks: public BLEServerCallbacks {
     void onConnect(BLEServer* pServer) {
@@ -58,21 +61,6 @@ class MyServerCallbacks: public BLEServerCallbacks {
       deviceConnected = false;
     }
 };
-
-
-// byte const unsigned long newBlinking[8] =
-// {
-
-//    0x3807, //11100000000111
-//     0x1C03, //01110000000011
-//     0x000,  //00000000000000
-//     0x000,  //00000000000000
-//     0x800, //00100000000000
-//     0x1444, //01010001000100
-//     0x2AA,  //00001010101010
-//     0x111   //00000100010001
-
-// };
 
 
 byte const unsigned long full[8] =
@@ -120,39 +108,6 @@ byte const unsigned long newBlinking[3][8] =
     0x0183  //000000110000011
   }
 };
-
-
-// byte const unsigned long newBlinking[8] =
-// {
-// 0x3C0F, //11110000001111
-//     0x1E07, //01111000000111
-//     0xC00,  //00110000000000
-//     0x000,  //00000000000000
-//     0x183,  //00000110000001
-//     0x7E7,  //00011111100111
-//     0xE7E,  //00111001111110
-//     0x018   //00000000011000
-// };
-
-//  0x3C0F, //11110000001111
-//     0x1E07, //01111000000111
-//     0xC00,  //00110000000000
-//     0x000,  //00000000000000
-//     0x000,  //00000000000000
-//     0x4C3,  //00010011000011
-//     0x336,  //00001100110110
-//     0x01C   //00000000011100
-
-
-//  0x3807, //11100000000111
-//     0x1C03, //01110000000011
-//     0x000,  //00000000000000
-//     0x000,  //00000000000000
-//     0x000, //00000000000000
-//     0xA88,  //00101010001000
-//     0x555,  //00010101010101
-//     0x22    //00000000100010
-
 
 
 byte const unsigned long happy[3][8] =
@@ -295,6 +250,48 @@ void straightLineAnimation(byte const unsigned long frame[8])
 
 }
 
+void diagonalstart()
+{
+ for(int k = 0; k < HEIGHT+WIDTH-1;k++)  //Combination of both
+  {
+    for(int x = 0; x < WIDTH;x++)
+    {
+      for(int y = 0; y < HEIGHT;y++) 
+      {
+        if((x+y) == k)
+        {
+          strip1.setPixelColor(getLEDIndex(x,y,true), strip1.Color(Red, Green, Blue));
+          strip2.setPixelColor(getLEDIndex(x,y), strip1.Color(Red, Green, Blue));
+        }
+      }
+    }
+    strip1.show();
+    strip2.show();
+    delay(10);
+    for(int x = 0; x < WIDTH;x++)
+    {
+      for(int y = 0; y < HEIGHT;y++)
+      {
+        if((x+y) == k)
+        {
+          if(newBlinking[0][y] & (1<<x))
+          {
+            
+          }
+          else
+          {
+            strip1.setPixelColor(getLEDIndex(x,y,true), strip1.Color(0,0,0));
+            strip2.setPixelColor(getLEDIndex(x,y), strip1.Color(0,0,0));
+          }
+           
+        }
+      }
+    }
+  }
+strip1.show();
+strip2.show();
+}
+
 
 void diagonalChange(byte const unsigned long frame[8],int R, int G, int B)
 {
@@ -335,8 +332,6 @@ void diagonalChange(byte const unsigned long frame[8],int R, int G, int B)
   Red = R;
   Green = G;
   Blue = B;
-
-
 
 
   for(int k = 0; k < HEIGHT+WIDTH-1;k++)  //Combination of both
@@ -381,30 +376,55 @@ strip2.show();
 }
 
 
+void loadingAnim()
+{
+for(int y = 0; y < 57; y++)
+{
+  matrix1.fillScreen(0);
+  matrix2.fillScreen(0);
+  matrix1.setCursor(x, 0);
+  matrix2.setCursor(x, 0);
+  matrix1.print(F("Loading"));
+  matrix2.print(F("Loading"));
+  if(--x < -40) { //-36
+    x = matrix1.width();
+    x = matrix2.width();
+    matrix1.setTextColor(matrix1.Color(163, 163, 6));
+    matrix2.setTextColor(matrix2.Color(163, 163, 6));
+  }
+  matrix1.show();
+  matrix2.show();
+  delay(40);
+}
+}
+
     
-
-
 
 void setup() {
   Serial.begin(9600);
+
   strip1.begin();
   strip2.begin();
+
   strip1.show();  
   strip2.show();
-  delay(1000);
 
+  delay(1000);
   matrix1.begin();
   matrix1.setTextWrap(false);
   matrix1.setBrightness(40);
   matrix1.setTextColor(matrix1.Color(3, 248, 248));
+
   matrix2.begin();
   matrix2.setTextWrap(false);
   matrix2.setBrightness(40);
   matrix2.setTextColor(matrix2.Color(3, 248, 248));
+
   //renderFrame(newBlinking);
   //lineByLineAnimation(newBlinking);
   //straightLineAnimation(newBlinking);
-    // Create the BLE Device
+  // Create the BLE Device
+
   BLEDevice::init("ProotBrain");
 
   
@@ -422,7 +442,7 @@ void setup() {
                       BLECharacteristic::PROPERTY_WRITE  
                     );
 
-                    // Create a BLE Descriptor
+  // Create a BLE Descriptor
   pCharacteristic->addDescriptor(new BLE2902());
 
   // Start the service
@@ -435,72 +455,15 @@ void setup() {
   pAdvertising->setMinPreferred(0x0);  // set value to 0x00 to not advertise this parameter
   BLEDevice::startAdvertising();
   Serial.println("Waiting a client connection to notify...");
+loadingAnim();
+diagonalstart();
 
-
-
-
-for(int y = 0; y < 57; y++)
-{
-matrix1.fillScreen(0);
-matrix2.fillScreen(0);
-  matrix1.setCursor(x, 0);
-  matrix2.setCursor(x, 0);
-  matrix1.print(F("Loading"));
-  matrix2.print(F("Loading"));
-  if(--x < -40) { //-36
-    x = matrix1.width();
-    x = matrix2.width();
-    matrix1.setTextColor(matrix1.Color(163, 163, 6));
-    matrix2.setTextColor(matrix2.Color(163, 163, 6));
-  }
-  matrix1.show();
-  matrix2.show();
-  delay(60);
-}
- for(int k = 0; k < HEIGHT+WIDTH-1;k++)  //Combination of both
-  {
-    for(int x = 0; x < WIDTH;x++)
-    {
-      for(int y = 0; y < HEIGHT;y++) 
-      {
-        if((x+y) == k)
-        {
-          strip1.setPixelColor(getLEDIndex(x,y,true), strip1.Color(Red, Green, Blue));
-          strip2.setPixelColor(getLEDIndex(x,y), strip1.Color(Red, Green, Blue));
-        }
-      }
-    }
-    strip1.show();
-    strip2.show();
-    delay(10);
-    for(int x = 0; x < WIDTH;x++)
-    {
-      for(int y = 0; y < HEIGHT;y++)
-      {
-        if((x+y) == k)
-        {
-          if(newBlinking[0][y] & (1<<x))
-          {
-            
-          }
-          else
-          {
-            strip1.setPixelColor(getLEDIndex(x,y,true), strip1.Color(0,0,0));
-            strip2.setPixelColor(getLEDIndex(x,y), strip1.Color(0,0,0));
-          }
-           
-        }
-      }
-    }
-  }
-strip1.show();
-strip2.show();
 delay(2000);
 
 
 
 
-diagonalChange(boyk, 163,6,163);
+//diagonalChange(boyk, 163,6,163);
 
 delay(1000);
 
@@ -654,6 +617,5 @@ void runAnimation(int animationID)
 
    
 }
-
 
 
