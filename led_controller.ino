@@ -3,12 +3,17 @@
 #include <BLEServer.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
+#include <Wire.h>
 #include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 #include <Adafruit_NeoMatrix.h>
 
 #ifndef PSTR
  #define PSTR // Make Arduino Due happy
 #endif
+
+#define SCREEN_WIDTH 128 // OLED width,  in pixels
+#define SCREEN_HEIGHT 64 // OLED height, in pixels
 
 #define PIN1        4        // Pin where NeoPixels are connected. Was 6. 
 #define PIN2        5        //Works for ESP32
@@ -41,6 +46,24 @@ BLECharacteristic* pCharacteristic = NULL;
 bool deviceConnected = false;
 bool oldDeviceConnected = false;
 
+
+
+byte mainmenu = 2;
+byte animation_menu = 0;
+byte colour_menu = 0;
+byte* selectedMenu;
+
+struct SelectedMenu{
+  int menu;
+  int item;
+  char* name;
+  int len;
+};
+
+SelectedMenu currentMenu;
+
+Adafruit_SSD1306 oled(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+
 uint32_t value = 0;
 String oldcolour;
 
@@ -59,9 +82,35 @@ class MyServerCallbacks: public BLEServerCallbacks {
 
     void onDisconnect(BLEServer* pServer) {
       deviceConnected = false;
+      BLEDevice::startAdvertising();
     }
 };
 
+
+void menuchosen()
+{
+
+  if(mainmenu != 0)
+  {
+    currentMenu.menu = 0;
+    currentMenu.item = mainmenu;
+    currentMenu.len = 2;
+  }
+  
+  if(animation_menu != 0)
+  {
+    currentMenu.menu = 1;
+    currentMenu.item = animation_menu;
+    currentMenu.len = 6;
+  }
+
+  if(colour_menu != 0)
+  {
+    currentMenu.menu = 2;
+    currentMenu.item = colour_menu;
+    currentMenu.len = 6;
+  }
+}
 
 byte const unsigned long full[8] =
 {
@@ -398,7 +447,82 @@ for(int y = 0; y < 57; y++)
 }
 }
 
+void moveToMenu()
+{
+  switch(currentMenu.menu)
+  {
+    case 0:
+    mainmenu = 0;
+      switch(currentMenu.item)
+      {
+        case 1:
+        animation_menu = 1;
+        break;
+        case 2:
+        colour_menu = 1;
+        break;
+      }
+    break;
+    case 1:
+      switch(currentMenu.item)
+      {
+        case 1:
+        //select the first animation
+        break;
+        case 2:
+        //select the second animation
+        break;
+      }
+    break;
+    case 2:
+      switch(currentMenu.item)
+      {
+        case 1:
+        //select the first colour
+        break;
+        case 2:
+        //select the second colour
+        break;
+      }
+    break;
+  }
+  
+}
+
+
+
+void renderMenu(int menu, int item, int len)
+{
+  item -= 1;
+  int pos = 0;
+  for(int x = 0; x < len && x < 3; x++)
+  {
+    oled.setTextSize(1);         // set text size
+    oled.setTextColor(WHITE);    // set text color
+    oled.setCursor(0, (x * 10 + 22));       // set position to display
     
+    if(x == item)
+    {
+      oled.print(">");
+    }
+
+    oled.print("Menu Option "); // set text
+    oled.println(x);
+    pos = x;
+  }
+
+  oled.setTextSize(1);         // set text size
+  oled.setTextColor(WHITE);    // set text color
+  oled.setCursor(0, (++pos * 10 + 22));       // set position to display
+  
+  if(3 == item)
+  {
+    oled.print(">");
+  }
+
+  oled.print("Back"); // set text
+
+}
 
 void setup() {
   Serial.begin(9600);
@@ -408,6 +532,12 @@ void setup() {
 
   strip1.show();  
   strip2.show();
+
+
+  if (!oled.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println(F("failed to start SSD1306 OLED"));
+    while (1);
+  }
 
   delay(1000);
   matrix1.begin();
@@ -473,23 +603,56 @@ delay(1000);
 
 void loop(){
 
+  menuchosen();
+  Serial.print("Current menu: ");
+  Serial.println(currentMenu.menu);
 
 
-  // String newcolour;
-  //  newcolour = pCharacteristic->getValue();
+  Serial.print("Current item: ");
+  Serial.println(currentMenu.item);
 
 
-  // if(newcolour != oldcolour)
-  // {
-  //     Serial.print("Red: ");
-  //     Serial.println(newcolour.substring(0,3).toInt());
-  //     Serial.print("Green: ");
-  //     Serial.println(newcolour.substring(4,8).toInt());
-  //     Serial.print("Blue: ");
-  //     Serial.println(newcolour.substring(8,12).toInt());
-  //     diagonalChange(newBlinking[0], newcolour.substring(0,3).toInt(), newcolour.substring(4,8).toInt(), newcolour.substring(8,12).toInt());    
-  //     oldcolour = newcolour;
-  // }
+  Serial.print("Current length: ");
+  Serial.println(currentMenu.len);
+
+  oled.clearDisplay(); // clear display
+
+  oled.setTextSize(1);         // set text size
+  oled.setTextColor(WHITE);    // set text color
+  oled.setCursor(0, 0);       // set position to display
+  oled.println("Colour: "); // set text
+
+
+  oled.setTextSize(1);         // set text size
+  oled.setTextColor(WHITE);    // set text color
+  oled.setCursor(0, 10);       // set position to display
+  oled.println("Animation: "); // set text
+
+  oled.drawLine(0,20,127,20,WHITE);
+  
+  renderMenu(currentMenu.menu,  currentMenu.item, currentMenu.len);
+
+   oled.display();    
+
+  moveToMenu();
+
+
+
+  String newcolour;
+   newcolour = pCharacteristic->getValue();
+
+
+  if(newcolour != oldcolour)
+  {
+      Serial.print("Red: ");
+      Serial.println(newcolour.substring(0,3).toInt());
+      Serial.print("Green: ");
+      Serial.println(newcolour.substring(4,8).toInt());
+      Serial.print("Blue: ");
+      Serial.println(newcolour.substring(8,12).toInt());
+      diagonalChange(newBlinking[0], newcolour.substring(0,3).toInt(), newcolour.substring(4,8).toInt(), newcolour.substring(8,12).toInt());    
+      oldcolour = newcolour;
+  }
 
   
 
@@ -545,7 +708,7 @@ void loop(){
   // delay(1000);
 
   // diagonalChange(newBlinking[0], 00,100,0);
-  // delay(3000);
+   delay(1000);
 
 }
 
