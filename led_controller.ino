@@ -7,7 +7,7 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <Adafruit_NeoMatrix.h>
-
+#include <BLEAdvertisedDevice.h>
 //Proots MAC ADDRESS 14:2b:2f:c4:e8:80
 //sudo chmod a+rw /dev/ttyUSB0
 
@@ -41,12 +41,24 @@ int Red = 163;
 int Green = 6;
 int Blue = 163;
 
+
+static BLEUUID SERVICE_UUID("4fafc201-1fb5-459e-8fcc-c5c9c331914b");
+static BLEUUID moveButtonUUID("beb5483e-36e1-4688-b7f5-ea07361b26a8");
+static BLEUUID selectButtonUUID("beb5483e-36e1-4688-b7f5-ea07361b26a2");
+
+static boolean doConnect = false;
+static boolean connected = false;
+static boolean doScan = false;
+
 BLEServer* pServer = NULL;
-BLECharacteristic* pCharacteristic = NULL;
+//BLECharacteristic* pCharacteristic = NULL;
+
+static BLERemoteCharacteristic *pCharacteristicMoveButton;
+static BLERemoteCharacteristic *pCharacteristicSelectButton;
+static BLEAdvertisedDevice *myDevice;
 
 bool deviceConnected = false;
 bool oldDeviceConnected = false;
-
 
 byte mainmenu = 1;
 byte animation_menu = 0;
@@ -69,13 +81,15 @@ String newColour;
 int x = matrix1.width();
 int pass = 0;
 
-
-#define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
-#define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
-
-
-
-
+static void notifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *pData, size_t length, bool isNotify) {
+  Serial.print("Notify callback for characteristic ");
+  Serial.print(pBLERemoteCharacteristic->getUUID().toString().c_str());
+  Serial.print(" of data length ");
+  Serial.println(length);
+  Serial.print("data: ");
+  Serial.write(pData, length);
+  Serial.println();
+}
 
 void menuchosen()
 {
@@ -478,7 +492,6 @@ void moveToMenu()
         break;
         case 2:
                 newColour = "000 255 000";
-
         break;
         case 3:
                 newColour = "000 000 255";
@@ -544,7 +557,14 @@ void renderMenu(int menu, int item, int len)
 oled.display();  
 }
 
+class MyClientCallback : public BLEClientCallbacks {
+  void onConnect(BLEClient *pclient) {}
 
+  void onDisconnect(BLEClient *pclient) {
+    connected = false;
+    Serial.println("onDisconnect");
+  }
+};
 
 class MyServerCallbacks: public BLEServerCallbacks {
     void onConnect(BLEServer* pServer) {
@@ -593,6 +613,97 @@ class MypCharacteristicCallbacks : public BLECharacteristicCallbacks{
     }
 };
 
+bool connectToServer() {
+  Serial.print("Forming a connection to ");
+  Serial.println(myDevice->getAddress().toString().c_str());
+
+  BLEClient *pClient = BLEDevice::createClient();
+  
+  Serial.println(" - Created client");
+
+  pClient->setClientCallbacks(new MyClientCallback());
+
+  // Connect to the remove BLE Server.
+  pClient->connect(myDevice);  // if you pass BLEAdvertisedDevice instead of address, it will be recognized type of peer device address (public or private)
+  Serial.println(" - Connected to server");
+  pClient->setMTU(517);  //set client to request maximum MTU from server (default is 23 otherwise)
+
+  // Obtain a reference to the service we are after in the remote BLE server.
+  BLERemoteService *pRemoteService = pClient->getService(SERVICE_UUID);
+  if (pRemoteService == nullptr) {
+    Serial.print("Failed to find our service UUID: ");
+    Serial.println(SERVICE_UUID.toString().c_str());
+    pClient->disconnect();
+    return false;
+  }
+  Serial.println(" - Found our service");
+
+  // Obtain a reference to the characteristic in the service of the remote BLE server.
+  pCharacteristicMoveButton = pRemoteService->getCharacteristic(moveButtonUUID);
+  if (pCharacteristicMoveButton == nullptr) {
+    Serial.print("Failed to find move characteristic UUID: ");
+    Serial.println(moveButtonUUID.toString().c_str());
+    pClient->disconnect();
+    return false;
+  }
+  Serial.println(" - Found move characteristic");
+
+
+  pCharacteristicSelectButton = pRemoteService->getCharacteristic(selectButtonUUID);
+  if (pCharacteristicSelectButton == nullptr) {
+    Serial.print("Failed to find select characteristic UUID: ");
+    Serial.println(moveButtonUUID.toString().c_str());
+    pClient->disconnect();
+    return false;
+  }
+  Serial.println(" - Found select characteristic");
+
+
+  // Read the value of the characteristic.
+  if (pCharacteristicMoveButton->canRead()) {
+    String value = pCharacteristicMoveButton->readValue();
+    Serial.print("The characteristic value was: ");
+    Serial.println(value.c_str());
+  }
+
+    if (pCharacteristicSelectButton->canRead()) {
+    String value = pCharacteristicSelectButton->readValue();
+    Serial.print("The characteristic value was: ");
+    Serial.println(value.c_str());
+  }
+
+  if (pCharacteristicMoveButton->canNotify()) {
+    pCharacteristicMoveButton->registerForNotify(notifyCallback);
+  }
+
+  if (pCharacteristicSelectButton->canNotify()) {
+    pCharacteristicSelectButton->registerForNotify(notifyCallback);
+  }
+
+  connected = true;
+  return true;
+}
+
+class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks {
+  /**
+   * Called for each advertising BLE server.
+   */
+  void onResult(BLEAdvertisedDevice advertisedDevice) {
+    Serial.print("BLE Advertised Device found: ");
+    Serial.println(advertisedDevice.toString().c_str());
+
+    // We have found a device, let us now see if it contains the service we are looking for.
+    if (advertisedDevice.haveServiceUUID() && advertisedDevice.isAdvertisingService(SERVICE_UUID)) {
+
+      BLEDevice::getScan()->stop();
+      myDevice = new BLEAdvertisedDevice(advertisedDevice);
+      doConnect = true;
+      doScan = true;
+
+    }  // Found our server
+  }  // onResult
+};  // MyAdvertisedDeviceCallbacks
+
 
 void setup() {
   Serial.begin(9600);
@@ -624,36 +735,39 @@ void setup() {
   // Create the BLE Device
 
   BLEDevice::init("ProotBrain");
-
+  BLEScan *pBLEScan = BLEDevice::getScan();
+  pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
+  pBLEScan->setInterval(1349);
+  pBLEScan->setWindow(449);
+  pBLEScan->setActiveScan(true);
+  pBLEScan->start(5, false);
   
   // Create the BLE Server
-  pServer = BLEDevice::createServer();
-  pServer->setCallbacks(new MyServerCallbacks());
+  // pServer = BLEDevice::createServer();
+  // pServer->setCallbacks(new MyServerCallbacks());
 
-  // Create the BLE Service
-  BLEService *pService = pServer->createService(SERVICE_UUID);
+  // // Create the BLE Service
+  // BLEService *pService = pServer->createService(SERVICE_UUID);
 
-  // Create a BLE Characteristic
-  pCharacteristic = pService->createCharacteristic(
-                      CHARACTERISTIC_UUID,
-                      BLECharacteristic::PROPERTY_READ   |
-                      BLECharacteristic::PROPERTY_WRITE  
-                    );
-
-
+  // // Create a BLE Characteristic
+  // pCharacteristic = pService->createCharacteristic(
+  //                     CHARACTERISTIC_UUID,
+  //                     BLECharacteristic::PROPERTY_READ   |
+  //                     BLECharacteristic::PROPERTY_WRITE  
+  //                   );
   
-  // Create a BLE Descriptor
-  pCharacteristic->addDescriptor(new BLE2902());
-  pCharacteristic->setCallbacks(new MypCharacteristicCallbacks());
-  // Start the service
-  pService->start();
+  // // Create a BLE Descriptor
+  // pCharacteristic->addDescriptor(new BLE2902());
+  // pCharacteristic->setCallbacks(new MypCharacteristicCallbacks());
+  // // Start the service
+  // pService->start();
 
-  // Start advertising
-  BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
-  pAdvertising->addServiceUUID(SERVICE_UUID);
-  pAdvertising->setScanResponse(false);
-  pAdvertising->setMinPreferred(0x0);  // set value to 0x00 to not advertise this parameter
-  BLEDevice::startAdvertising();
+  // // Start advertising
+  // BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
+  // pAdvertising->addServiceUUID(SERVICE_UUID);
+  // pAdvertising->setScanResponse(false);
+  // pAdvertising->setMinPreferred(0x0);  // set value to 0x00 to not advertise this parameter
+  // BLEDevice::startAdvertising();
   Serial.println("Waiting a client connection to notify...");
 loadingAnimRender();
 diagonalStartRender();
@@ -674,7 +788,45 @@ menuchosen();
 
 void loop(){
 
+    if (doConnect == true) {
+    if (connectToServer()) {
+      Serial.println("We are now connected to the BLE Server.");
+    } else {
+      Serial.println("We have failed to connect to the server; there is nothing more we will do.");
+    }
+    doConnect = false;
+  }
 
+
+  if (connected) {
+    // Set the characteristic's value to be the array of bytes that is actually a string.
+    //    pCharacteristicMoveButton->writeValue(newValue.c_str(), newValue.length());
+    //Serial.print("Current move is: ");
+    if(pCharacteristicMoveButton->readValue() == "Down")
+    {
+      if(currentMenu.item <= currentMenu.len)
+      {
+        currentMenu.item++;
+      }
+      else
+      {
+        currentMenu.item=1;
+      }
+      
+      pCharacteristicMoveButton->writeValue("Waiting");
+      Serial.println(pCharacteristicMoveButton->readValue());
+    }
+
+    //Serial.print("Current select is: ");
+    if(pCharacteristicSelectButton->readValue() == "Select")
+    {
+      Serial.println(pCharacteristicSelectButton->readValue());
+      moveToMenu();
+      pCharacteristicSelectButton->writeValue("Waiting");
+    }
+  } else if (doScan) {
+    BLEDevice::getScan()->start(0);  // this is just example to start scan after disconnect, most likely there is better way to do it in arduino
+  }
   // Serial.print("Current menu: ");
   // Serial.println(currentMenu.menu);
   // if(Serial.available() != 0)
@@ -700,58 +852,6 @@ if(newColour != oldColour)
   oldColour = newColour;
 }
   
-  //  String newCommand;
-  // newCommand = pCharacteristic->getValue();
-
-
-  // if(oldcolour != newCommand)
-  // {
-  //     if(newCommand.substring(0,4) == "down")
-  //     {
-  //           currentMenu.item++;
-  //           Serial.println("Going down");
-  //     }
-  //     else if(newCommand.substring(0,2) == "up")
-  //     {
-  //           currentMenu.item--;
-  //           Serial.println("Going up");
-  //     }else
-  //     {
-  //     Serial.print("Red: ");
-  //     Serial.println(newCommand.substring(0,3).toInt());
-  //     Serial.print("Green: ");
-  //     Serial.println(newCommand.substring(4,8).toInt());
-  //     Serial.print("Blue: ");
-  //     Serial.println(newCommand.substring(8,12).toInt());
-  //     diagonalChangeRender(newBlinking[0], newCommand.substring(0,3).toInt(), newCommand.substring(4,8).toInt(), newCommand.substring(8,12).toInt());    
-  //     }
-  //     oldcolour = newCommand;
-  // }
-
-  // switch (colour){
-  //   case 1:
-  //   Serial.println("Red");
-  //   diagonalChange(newBlinking[0], 255,0,0);
-  //   pCharacteristic->setValue("0");
-  //   delay(1000);
-  //   break;
-  //   case 2:
-  //   Serial.println("Green");
-  //   diagonalChange(newBlinking[0], 0,255,0);
-  //   pCharacteristic->setValue("0");
-  //   delay(1000);
-  //   break;
-  //   case 3:
-  //   Serial.println("Blue");
-  //   diagonalChange(newBlinking[0], 0,0,255);
-  //   pCharacteristic->setValue("0");
-  //   delay(1000);
-  //   break;
-  // }
-  // Serial.println(colour);
-  //   delay(1000);
-  // diagonalChange(newBlinking[0], 163,0,163);
-  // delay(3000);
   
    delay(10);
 
