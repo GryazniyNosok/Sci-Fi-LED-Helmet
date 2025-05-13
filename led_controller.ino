@@ -68,6 +68,7 @@ struct SelectedMenu{
   int menu;
   int item;
   char* name;
+  char* options;
   int len;
 };
 
@@ -98,6 +99,12 @@ void menuchosen()
     currentMenu.menu = 0;
     currentMenu.item = 1;
     currentMenu.len = 2;
+    
+    currentMenu.name = (char*)malloc(strlen("Main")+1);
+    strcpy(currentMenu.name, "Main");
+    
+    currentMenu.options = (char*)malloc(strlen("Animations|Colours")+1);
+    strcpy(currentMenu.options, "Animations|Colours");
   }
   
   if(animation_menu != 0)
@@ -105,6 +112,13 @@ void menuchosen()
     currentMenu.menu = 1;
     currentMenu.item = 1;
     currentMenu.len = 6;
+
+    currentMenu.name = (char*)malloc(strlen("Animations")+1);
+    strcpy(currentMenu.name, "Animations");
+    
+    currentMenu.options = (char*)malloc(strlen("Blink|Smile|Sad|Confusion")+1);
+    strcpy(currentMenu.options, "Blink|Smile|Sad|Confusion");
+    
   }
 
   if(colour_menu != 0)
@@ -112,6 +126,12 @@ void menuchosen()
     currentMenu.menu = 2;
     currentMenu.item = 1;
     currentMenu.len = 6;
+
+    currentMenu.name = (char*)malloc(strlen("Colours")+1);
+    strcpy(currentMenu.name, "Colours");
+    
+    currentMenu.options = (char*)malloc(strlen("Purple|Orange|Yellow|Red|Blue|Green")+1);
+    strcpy(currentMenu.options, "Purple|Orange|Yellow|Red|Blue|Green");
   }
 }
 
@@ -461,12 +481,31 @@ void moveToMenu()
         currentMenu.menu = 1;
         currentMenu.item = 1;
         currentMenu.len = 6;
+        
+        free(currentMenu.name);
+        free(currentMenu.options);
+
+        currentMenu.name = (char*)malloc(strlen("Animations")+1);
+        strcpy(currentMenu.name, "Animations");
+    
+        currentMenu.options = (char*)malloc(strlen("Blink|Smile|Sad|Confusion|Angry")+1);
+        strcpy(currentMenu.options, "Blink|Smile|Sad|Confusion|Angry");
         break;
         
         case 2:
         currentMenu.menu = 2;
         currentMenu.item = 1;
         currentMenu.len = 6;
+
+        free(currentMenu.name);
+        free(currentMenu.options);
+
+        currentMenu.name = (char*)malloc(strlen("Colours")+1);
+        strcpy(currentMenu.name, "Colours");
+    
+        currentMenu.options = (char*)malloc(strlen("Purple|Orange|Yellow|Red|Green|Blue")+1);
+        strcpy(currentMenu.options, "Purple|Orange|Yellow|Red|Green|Blue");
+
         break;
       }
     break;
@@ -480,21 +519,59 @@ void moveToMenu()
         
         case 2:
         runAnimation(1);
+        break;
+        case 7:
+        currentMenu.menu = 0;
+        currentMenu.item = 1;
+        currentMenu.len = 2;
+
+        free(currentMenu.name);
+        free(currentMenu.options);
+
+        currentMenu.name = (char*)malloc(strlen("Main")+1);
+        strcpy(currentMenu.name, "Main");
+    
+        currentMenu.options = (char*)malloc(strlen("Animations|Colours")+1);
+        strcpy(currentMenu.options, "Animations|Colours");
 
         break;
       }
     break;
     case 2:
-      switch(currentMenu.item)
-      {
-        case 1:
-                newColour = "255 000 000";
+      switch(currentMenu.item) //Purple|Orange|Yellow|Red|Blue|Green
+      { 
+        case 1: 
+                newColour = "163 003 163"; //\\3, 248, 248
         break;
         case 2:
-                newColour = "000 255 000";
+                newColour = "255 040 0";//Too green
         break;
         case 3:
+                newColour = "255 255 0";
+        break;
+        case 4:
+                newColour = "255 000 000";
+        break;
+        case 5:
+                newColour = "000 255 000";
+        break;
+        case 6:
                 newColour = "000 000 255";
+        break;
+        case 7:
+        currentMenu.menu = 0;
+        currentMenu.item = 1;
+        currentMenu.len = 2;
+
+
+        free(currentMenu.name);
+        free(currentMenu.options);
+
+        currentMenu.name = (char*)malloc(strlen("Main")+1);
+        strcpy(currentMenu.name, "Main");
+    
+        currentMenu.options = (char*)malloc(strlen("Animations|Colours")+1);
+        strcpy(currentMenu.options, "Animations|Colours");        
 
         break;
       }
@@ -508,6 +585,7 @@ void moveToMenu()
 void renderMenu(int menu, int item, int len)
 {
 
+  //Screen size  width 128 x height 64
 
   oled.clearDisplay(); // clear display
 
@@ -521,34 +599,58 @@ void renderMenu(int menu, int item, int len)
   oled.setTextSize(1);         // set text size
   oled.setTextColor(WHITE);    // set text color
   oled.setCursor(0, 10);       // set position to display
-  oled.print("Animation: "); // set text
-  oled.println("Idk man");
+  oled.print("Menu: "); // set text
+  oled.println(currentMenu.name);
 
   oled.drawLine(0,20,127,20,WHITE);
 
   item -= 1;
   int pos = 0;
-  for(int x = 0; x < len && x < 3; x++)
+  int pages = len / 4;
+  int currentpage = (currentMenu.item / 4);
+  char *tempname;
+  char *tempoptions;
+
+
+  tempoptions = (char*)malloc(strlen(currentMenu.options)+1);
+  strcpy(tempoptions, currentMenu.options);
+
+  tempname = strtok(tempoptions,"|");
+  
+  for(int i = 0; i < currentpage; i++)
+    {
+      tempname = strtok(nullptr, "|"); 
+      tempname = strtok(nullptr, "|"); 
+      tempname = strtok(nullptr, "|");  
+    }
+  
+  for(int x = 0; x < 3 && x < currentMenu.len; x++)
   {
+    
     oled.setTextSize(1);         // set text size
     oled.setTextColor(WHITE);    // set text color
     oled.setCursor(0, (x * 10 + 22));       // set position to display
     
-    if(x == item)
+    if((currentpage*3)+x == item)
     {
       oled.print(">");
     }
-
-    oled.print("Menu Option "); // set text
-    oled.println(x);
+    
+    oled.println(tempname);
+    //Serial.println(tempoptions);
+    tempname = strtok(nullptr, "|");
+    //Serial.println(tempoptions);
+//    oled.print("Menu Option "); // set text
+//    oled.println((currentpage*3)+x);
     pos = x;
+    
   }
 
   oled.setTextSize(1);         // set text size
   oled.setTextColor(WHITE);    // set text color
   oled.setCursor(0, (++pos * 10 + 22));       // set position to display
   
-  if(3 == item)
+  if( currentMenu.len== item)
   {
     oled.print(">");
   }
@@ -561,6 +663,7 @@ class MyClientCallback : public BLEClientCallbacks {
   void onConnect(BLEClient *pclient) {}
 
   void onDisconnect(BLEClient *pclient) {
+    doConnect = true;
     connected = false;
     Serial.println("onDisconnect");
   }
@@ -702,6 +805,7 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks {
 
     }  // Found our server
   }  // onResult
+  
 };  // MyAdvertisedDeviceCallbacks
 
 
@@ -768,7 +872,7 @@ void setup() {
   // pAdvertising->setScanResponse(false);
   // pAdvertising->setMinPreferred(0x0);  // set value to 0x00 to not advertise this parameter
   // BLEDevice::startAdvertising();
-  Serial.println("Waiting a client connection to notify...");
+  //Serial.println("Waiting a client connection to notify...");
 loadingAnimRender();
 diagonalStartRender();
 
@@ -791,10 +895,11 @@ void loop(){
     if (doConnect == true) {
     if (connectToServer()) {
       Serial.println("We are now connected to the BLE Server.");
+      doConnect = false;
     } else {
       Serial.println("We have failed to connect to the server; there is nothing more we will do.");
     }
-    doConnect = false;
+
   }
 
 
@@ -826,6 +931,7 @@ void loop(){
     }
   } else if (doScan) {
     BLEDevice::getScan()->start(0);  // this is just example to start scan after disconnect, most likely there is better way to do it in arduino
+    delay(1000);
   }
   // Serial.print("Current menu: ");
   // Serial.println(currentMenu.menu);
