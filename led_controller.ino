@@ -60,6 +60,14 @@ static BLEAdvertisedDevice *myDevice;
 bool deviceConnected = false;
 bool oldDeviceConnected = false;
 
+bool rainbow = false;
+bool blinking = false;
+bool up = false;
+int rainbowcolour;
+int colour;
+int colourToChange = random(1,4);
+
+
 byte mainmenu = 1;
 byte animation_menu = 0;
 byte colour_menu = 0;
@@ -98,13 +106,13 @@ void menuchosen()
   {
     currentMenu.menu = 0;
     currentMenu.item = 1;
-    currentMenu.len = 2;
+    currentMenu.len = 3;
     
     currentMenu.name = (char*)malloc(strlen("Main")+1);
     strcpy(currentMenu.name, "Main");
     
-    currentMenu.options = (char*)malloc(strlen("Animations|Colours")+1);
-    strcpy(currentMenu.options, "Animations|Colours");
+    currentMenu.options = (char*)malloc(strlen("Animations|Colours|Modes")+1);
+    strcpy(currentMenu.options, "Animations|Colours|Modes");
   }
   
   if(animation_menu != 0)
@@ -507,6 +515,20 @@ void moveToMenu()
         strcpy(currentMenu.options, "Purple|Orange|Yellow|Red|Green|Blue");
 
         break;
+        case 3:
+        currentMenu.menu = 3;
+        currentMenu.item = 1;
+        currentMenu.len = 2;
+
+        free(currentMenu.name);
+        free(currentMenu.options);
+
+        currentMenu.name = (char*)malloc(strlen("Modes")+1);
+        strcpy(currentMenu.name, "Modes");
+    
+        currentMenu.options = (char*)malloc(strlen("Rainbow|Blinking")+1);
+        strcpy(currentMenu.options, "Rainbow|Blinking");
+        break;
       }
     break;
     case 1:
@@ -523,7 +545,7 @@ void moveToMenu()
         case 7:
         currentMenu.menu = 0;
         currentMenu.item = 1;
-        currentMenu.len = 2;
+        currentMenu.len = 3;
 
         free(currentMenu.name);
         free(currentMenu.options);
@@ -531,8 +553,8 @@ void moveToMenu()
         currentMenu.name = (char*)malloc(strlen("Main")+1);
         strcpy(currentMenu.name, "Main");
     
-        currentMenu.options = (char*)malloc(strlen("Animations|Colours")+1);
-        strcpy(currentMenu.options, "Animations|Colours");
+        currentMenu.options = (char*)malloc(strlen("Animations|Colours|Modes")+1);
+        strcpy(currentMenu.options, "Animations|Colours|Modes");
 
         break;
       }
@@ -540,14 +562,14 @@ void moveToMenu()
     case 2:
       switch(currentMenu.item) //Purple|Orange|Yellow|Red|Blue|Green
       { 
-        case 1: 
+        case 1: //ADD LIGHT, WHITE AND DIM PINK
                 newColour = "163 003 163"; //\\3, 248, 248
         break;
         case 2:
-                newColour = "255 040 0";//Too green
+                newColour = "255 040 000";//Too green
         break;
         case 3:
-                newColour = "255 255 0";
+                newColour = "255 255 006";
         break;
         case 4:
                 newColour = "255 000 000";
@@ -561,7 +583,7 @@ void moveToMenu()
         case 7:
         currentMenu.menu = 0;
         currentMenu.item = 1;
-        currentMenu.len = 2;
+        currentMenu.len = 3;
 
 
         free(currentMenu.name);
@@ -570,11 +592,34 @@ void moveToMenu()
         currentMenu.name = (char*)malloc(strlen("Main")+1);
         strcpy(currentMenu.name, "Main");
     
-        currentMenu.options = (char*)malloc(strlen("Animations|Colours")+1);
-        strcpy(currentMenu.options, "Animations|Colours");        
-
+        currentMenu.options = (char*)malloc(strlen("Animations|Colours|Modes")+1);
+        strcpy(currentMenu.options, "Animations|Colours|Modes");        
         break;
       }
+    break;
+    case 3:
+        switch (currentMenu.item)
+        {
+          case 1:
+          rainbow = !rainbow;
+          break;
+          case 2:
+          blinking = !blinking;
+          break;
+          case 3:
+            currentMenu.menu = 0;
+            currentMenu.item = 1;
+            currentMenu.len = 3;
+
+            free(currentMenu.name);
+            free(currentMenu.options);
+
+            currentMenu.name = (char*)malloc(strlen("Main")+1);
+            strcpy(currentMenu.name, "Main");
+    
+            currentMenu.options = (char*)malloc(strlen("Animations|Colours|Modes")+1);
+            strcpy(currentMenu.options, "Animations|Colours|Modes");
+        }
     break;
   }
   
@@ -700,7 +745,7 @@ class MypCharacteristicCallbacks : public BLECharacteristicCallbacks{
       {
         currentMenu.menu = 0;
         currentMenu.item = 1;
-        currentMenu.len = 2;
+        currentMenu.len = 3;
       }
       else if (newCommand.substring(0,6)== "select")
       {
@@ -828,7 +873,7 @@ void setup() {
   matrix1.begin();
   matrix1.setTextWrap(false);
   matrix1.setBrightness(40);
-  matrix1.setTextColor(matrix1.Color(3, 248, 248));
+  matrix1.setTextColor(matrix1.Color(3, 248, 248)); 
 
   matrix2.begin();
   matrix2.setTextWrap(false);
@@ -902,6 +947,106 @@ void loop(){
 
   }
 
+
+  if(rainbow)
+  {
+    // Serial.print("Colour: ");
+    // Serial.println(colourToChange);
+    // Serial.println(rainbowcolour);
+    // Serial.print("R: ");
+    // Serial.print(Red);
+    // Serial.print("G: ");
+    // Serial.print(Green);
+    // Serial.print("B: ");
+    // Serial.println(Blue);
+
+    if(rainbowcolour < 10 || rainbowcolour > 245)
+    {
+      colourToChange = random(1,4);
+      switch (colourToChange)
+      {
+        case 1:
+          rainbowcolour = Red;
+        break;
+        case 2:
+          rainbowcolour = Green;
+        break;
+        case 3:
+          rainbowcolour = Blue;
+        break;
+      }
+    }
+    if(rainbowcolour > 245)
+    {
+      up = false;
+    }
+    else if(rainbowcolour < 10)
+    {
+      up = true;
+    }
+
+    if(up)
+    {
+      rainbowcolour += 5;
+    }
+    else
+    {
+      rainbowcolour -= 5;
+    }
+    switch (colourToChange)
+    {
+      case 1:
+      if(up)
+      {
+        Red += 5;
+      }
+      else
+      {
+        Red -= 5;
+      } 
+      break;
+      case 2:
+      if(up)
+      {
+        Green+= 5;
+      }
+      else
+      {
+        Green-= 5;
+      }
+      break;
+      case 3:
+      if(up)
+      {
+        Blue+= 5;
+      }
+      else
+      {
+        Blue-= 5;
+      }
+      break;
+      default:
+      colourToChange = random(1,4);
+      break;
+      
+    }
+    strip1.clear();
+    strip2.clear();
+    for(int x = 0; x < HEIGHT; x++)
+    {
+      int row = newBlinking[0][x]; 
+      for (int n = 14; n >= 0;n--)
+      {
+        if(row & (1<<n))
+        {
+          strip1.setPixelColor(getLEDIndex(n,x,true), strip1.Color(Red, Green, Blue));
+          strip2.setPixelColor(getLEDIndex(n,x), strip2.Color(Red, Green, Blue));
+        }
+      }
+    }
+    strip1.show(); 
+    strip2.show(); 
+  }
 
   if (connected) {
     // Set the characteristic's value to be the array of bytes that is actually a string.
