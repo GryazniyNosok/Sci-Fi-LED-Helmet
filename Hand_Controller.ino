@@ -22,6 +22,18 @@ BLECharacteristic *pCharacteristicMoveButton;
 BLECharacteristic *pCharacteristicSelectButton;
 
 
+class MyServerCallbacks: public BLEServerCallbacks {
+    void onConnect(BLEServer* pServer) {
+      Serial.println("Client connected");
+    }
+
+    void onDisconnect(BLEServer* pServer) {
+      Serial.println("Client disconnected, restarting advertising");
+      BLEDevice::startAdvertising();  // Restart advertising so others can connect again
+    }
+};
+
+
 void setup() {
   Serial.begin(9600);
   //Serial.println("Starting BLE work!");
@@ -51,6 +63,7 @@ void setup() {
   pAdvertising->setScanResponse(true);
   pAdvertising->setMinPreferred(0x06);  // functions that help with iPhone connections issue
   pAdvertising->setMinPreferred(0x12);
+  pServer->setCallbacks(new MyServerCallbacks()); 
   BLEDevice::startAdvertising();
   Serial.println("Characteristic defined! Now you can read it in your phone!");
 }
