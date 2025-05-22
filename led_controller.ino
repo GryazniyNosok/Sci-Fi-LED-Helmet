@@ -702,6 +702,8 @@ void renderMenu(int menu, int item, int len)
 
   oled.print("Back"); // set text
 oled.display();  
+        free(tempoptions);
+
 }
 
 class MyClientCallback : public BLEClientCallbacks {
@@ -1091,7 +1093,7 @@ void loop(){
 
   // Serial.print("Current length: ");
   // Serial.println(currentMenu.len);
-
+//Serial.printf("Free heap: %u bytes\n", esp_get_free_heap_size());
   
   
   renderMenu(currentMenu.menu,  currentMenu.item, currentMenu.len);
