@@ -15,19 +15,25 @@
  #define PSTR // Make Arduino Due happy
 #endif
 
+
+//Screen resolution
 #define SCREEN_WIDTH 128 // OLED width,  in pixels
 #define SCREEN_HEIGHT 64 // OLED height, in pixels
 
-#define PIN1        4        // Pin where NeoPixels are connected. Was 6. 
-#define PIN2        5        //Works for ESP32
-#define WIDTH      15       // Width of the LED matrix 32
-#define HEIGHT     8        // Height of the LED matrix
+
+
+#define PIN1        4            // Pin for first matrix
+#define PIN2        5            // Pin for second matrix
+#define WIDTH      15            // Width of the LED matrix 
+#define HEIGHT     8             // Height of the LED matrix
 #define NUMPIXELS_PER_STRIP  200 // Total number of LEDs
 
+
+//Prepare LEDs
 Adafruit_NeoPixel strip1(NUMPIXELS_PER_STRIP, PIN1, NEO_GRB + NEO_KHZ800);
 Adafruit_NeoPixel strip2(NUMPIXELS_PER_STRIP, PIN2, NEO_GRB + NEO_KHZ800);
 
-
+//Prepare LEDs to support text
 Adafruit_NeoMatrix matrix1 = Adafruit_NeoMatrix(15, 8, PIN1,
   NEO_MATRIX_BOTTOM     + NEO_MATRIX_RIGHT +
   NEO_MATRIX_COLUMNS + NEO_MATRIX_ZIGZAG,
@@ -37,41 +43,50 @@ Adafruit_NeoMatrix matrix2 = Adafruit_NeoMatrix(15, 8, PIN2,
   NEO_MATRIX_TOP     + NEO_MATRIX_LEFT +
   NEO_MATRIX_COLUMNS + NEO_MATRIX_ZIGZAG,
   NEO_RGB            + NEO_KHZ800);
+
+//Default colour 
 int Red = 163;
 int Green = 6;
 int Blue = 163;
 
-
+//Client ID and Services ID
 static BLEUUID SERVICE_UUID("4fafc201-1fb5-459e-8fcc-c5c9c331914b");
 static BLEUUID moveButtonUUID("beb5483e-36e1-4688-b7f5-ea07361b26a8");
 static BLEUUID selectButtonUUID("beb5483e-36e1-4688-b7f5-ea07361b26a2");
 
-static boolean doConnect = false;
-static boolean connected = false;
-static boolean doScan = false;
 
-BLEServer* pServer = NULL;
+static boolean doConnect = false;   //Try to connect
+static boolean connected = false;   //If BLE connection was succseful. 
+static boolean doScan = false;      //Scan on disconect
+
+//WHY?
+bool deviceConnected = false;
+bool oldDeviceConnected = false;
+
+
+BLEServer* pServer = NULL;          //Set up a server
 //BLECharacteristic* pCharacteristic = NULL;
 
+//Prepare BLE characteristics
 static BLERemoteCharacteristic *pCharacteristicMoveButton;
 static BLERemoteCharacteristic *pCharacteristicSelectButton;
 static BLEAdvertisedDevice *myDevice;
 
-bool deviceConnected = false;
-bool oldDeviceConnected = false;
 
-bool rainbow = false;
-bool blinking = false;
-bool up = false;
-int rainbowcolour;
-int colour;
-int colourToChange = random(1,4);
+bool rainbow = false;   //Raindow toggle
+bool blinking = false;  //Blinking toggle
 
+bool up = false;                    //Rainbow direction
+int rainbowcolour;                  //Rainbow colour
+int colour;                         //Colour out of RGB
+int colourToChange = random(1,4);   //A new colour to pick
 
+//Initial menu WHY?
 byte mainmenu = 1;
 byte animation_menu = 0;
 byte colour_menu = 0;
 
+//Structure for current menu
 struct SelectedMenu{
   int menu;
   int item;
@@ -82,14 +97,17 @@ struct SelectedMenu{
 
 SelectedMenu currentMenu;
 
+//Prepare the OLED screen
 Adafruit_SSD1306 oled(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
-uint32_t value = 0;
-String oldColour;
-String newColour;
-int x = matrix1.width();
-int pass = 0;
 
+uint32_t value = 0;       //What's this?
+String oldColour;         //Old colour for BLE
+String newColour;         //New colour for BLE
+int x = matrix1.width();  //WHY?
+int pass = 0;             //WHY?
+
+//Callback for debugging
 static void notifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *pData, size_t length, bool isNotify) {
   Serial.print("Notify callback for characteristic ");
   Serial.print(pBLERemoteCharacteristic->getUUID().toString().c_str());
@@ -100,49 +118,7 @@ static void notifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, ui
   Serial.println();
 }
 
-void menuchosen()
-{
-  if(mainmenu != 0)
-  {
-    currentMenu.menu = 0;
-    currentMenu.item = 1;
-    currentMenu.len = 3;
-    
-    currentMenu.name = (char*)malloc(strlen("Main")+1);
-    strcpy(currentMenu.name, "Main");
-    
-    currentMenu.options = (char*)malloc(strlen("Animations|Colours|Modes")+1);
-    strcpy(currentMenu.options, "Animations|Colours|Modes");
-  }
-  
-  if(animation_menu != 0)
-  {
-    currentMenu.menu = 1;
-    currentMenu.item = 1;
-    currentMenu.len = 6;
-
-    currentMenu.name = (char*)malloc(strlen("Animations")+1);
-    strcpy(currentMenu.name, "Animations");
-    
-    currentMenu.options = (char*)malloc(strlen("Blink|Smile|Sad|Confusion")+1);
-    strcpy(currentMenu.options, "Blink|Smile|Sad|Confusion");
-    
-  }
-
-  if(colour_menu != 0)
-  {
-    currentMenu.menu = 2;
-    currentMenu.item = 1;
-    currentMenu.len = 6;
-
-    currentMenu.name = (char*)malloc(strlen("Colours")+1);
-    strcpy(currentMenu.name, "Colours");
-    
-    currentMenu.options = (char*)malloc(strlen("Purple|Orange|Yellow|Red|Blue|Green")+1);
-    strcpy(currentMenu.options, "Purple|Orange|Yellow|Red|Blue|Green");
-  }
-}
-
+//Frame storage
 byte const unsigned long full[8] =
 {
 0x7FFF,
@@ -155,6 +131,7 @@ byte const unsigned long full[8] =
 0x0000
 };
 
+//Blinking animation
 byte const unsigned long newBlinking[3][8] =
 {
   {
@@ -189,7 +166,7 @@ byte const unsigned long newBlinking[3][8] =
   }
 };
 
-
+//Happy animation
 byte const unsigned long happy[3][8] =
 {
   {
@@ -224,6 +201,7 @@ byte const unsigned long happy[3][8] =
   }
 };
 
+//Boykisser animation
 byte const unsigned long boyk[8] =
 {
   0x0000,  // 000000000000000
@@ -236,7 +214,7 @@ byte const unsigned long boyk[8] =
   0x0360   // 000001101100000
 };
 
-
+//Turn the zigzag order into a x by x matrix
 int getLEDIndex(int x, int y, bool flip = false) {
     
     if (flip) {
@@ -252,7 +230,7 @@ int getLEDIndex(int x, int y, bool flip = false) {
     }
 }
 
-
+//Render frame the line by line
 void lineByLineRender(byte const unsigned long frame[8])
 {
     
@@ -279,6 +257,7 @@ void lineByLineRender(byte const unsigned long frame[8])
   }
 }
     
+//Render with straight vertical line
 void straightLineRender(byte const unsigned long frame[8])
 {
 
@@ -329,6 +308,7 @@ void straightLineRender(byte const unsigned long frame[8])
 
 }
 
+//Render with diagonal line
 void diagonalStartRender()
 {
  for(int k = 0; k < HEIGHT+WIDTH-1;k++)  //Combination of both
@@ -454,7 +434,7 @@ strip2.show();
 
 }
 
-
+//Render the loading text animation
 void loadingAnimRender()
 {
 for(int y = 0; y < 57; y++)
@@ -476,7 +456,24 @@ for(int y = 0; y < 57; y++)
   delay(40);
 }
 }
+//Return to the main menu
+void returnToMainMenu()
+{
+  currentMenu.menu = 3;
+  currentMenu.item = 1;
+  currentMenu.len = 2;
 
+  free(currentMenu.name);
+  free(currentMenu.options);
+
+  currentMenu.name = (char*)malloc(strlen("Modes")+1);
+  strcpy(currentMenu.name, "Modes");
+    
+  currentMenu.options = (char*)malloc(strlen("Rainbow|Blinking")+1);
+  strcpy(currentMenu.options, "Rainbow|Blinking");
+}
+
+//Changes the menu based on the current selected option
 void moveToMenu()
 {
   switch(currentMenu.menu)
@@ -516,18 +513,7 @@ void moveToMenu()
 
         break;
         case 3:
-        currentMenu.menu = 3;
-        currentMenu.item = 1;
-        currentMenu.len = 2;
-
-        free(currentMenu.name);
-        free(currentMenu.options);
-
-        currentMenu.name = (char*)malloc(strlen("Modes")+1);
-        strcpy(currentMenu.name, "Modes");
-    
-        currentMenu.options = (char*)malloc(strlen("Rainbow|Blinking")+1);
-        strcpy(currentMenu.options, "Rainbow|Blinking");
+          returnToMainMenu();
         break;
       }
     break;
@@ -535,27 +521,15 @@ void moveToMenu()
       switch(currentMenu.item)
       {
         case 1:
-        runAnimation(0);
-
+          runAnimation(0);
         break;
-        
+
         case 2:
-        runAnimation(1);
+          runAnimation(1);
         break;
+
         case 7:
-        currentMenu.menu = 0;
-        currentMenu.item = 1;
-        currentMenu.len = 3;
-
-        free(currentMenu.name);
-        free(currentMenu.options);
-
-        currentMenu.name = (char*)malloc(strlen("Main")+1);
-        strcpy(currentMenu.name, "Main");
-    
-        currentMenu.options = (char*)malloc(strlen("Animations|Colours|Modes")+1);
-        strcpy(currentMenu.options, "Animations|Colours|Modes");
-
+          returnToMainMenu();
         break;
       }
     break;
@@ -581,19 +555,7 @@ void moveToMenu()
                 newColour = "000 000 255";
         break;
         case 7:
-        currentMenu.menu = 0;
-        currentMenu.item = 1;
-        currentMenu.len = 3;
-
-
-        free(currentMenu.name);
-        free(currentMenu.options);
-
-        currentMenu.name = (char*)malloc(strlen("Main")+1);
-        strcpy(currentMenu.name, "Main");
-    
-        currentMenu.options = (char*)malloc(strlen("Animations|Colours|Modes")+1);
-        strcpy(currentMenu.options, "Animations|Colours|Modes");        
+          returnToMainMenu();
         break;
       }
     break;
@@ -607,18 +569,9 @@ void moveToMenu()
           blinking = !blinking;
           break;
           case 3:
-            currentMenu.menu = 0;
-            currentMenu.item = 1;
-            currentMenu.len = 3;
+            returnToMainMenu();
+          break;
 
-            free(currentMenu.name);
-            free(currentMenu.options);
-
-            currentMenu.name = (char*)malloc(strlen("Main")+1);
-            strcpy(currentMenu.name, "Main");
-    
-            currentMenu.options = (char*)malloc(strlen("Animations|Colours|Modes")+1);
-            strcpy(currentMenu.options, "Animations|Colours|Modes");
         }
     break;
   }
@@ -626,7 +579,7 @@ void moveToMenu()
 }
 
 
-
+//Render the menu on the OLED screen
 void renderMenu(int menu, int item, int len)
 {
 
@@ -682,11 +635,9 @@ void renderMenu(int menu, int item, int len)
     }
     
     oled.println(tempname);
-    //Serial.println(tempoptions);
+
     tempname = strtok(nullptr, "|");
-    //Serial.println(tempoptions);
-//    oled.print("Menu Option "); // set text
-//    oled.println((currentpage*3)+x);
+
     pos = x;
     
   }
@@ -701,8 +652,8 @@ void renderMenu(int menu, int item, int len)
   }
 
   oled.print("Back"); // set text
-oled.display();  
-        free(tempoptions);
+  oled.display();  
+  free(tempoptions);
 
 }
 
@@ -714,53 +665,6 @@ class MyClientCallback : public BLEClientCallbacks {
     connected = false;
     Serial.println("onDisconnect");
   }
-};
-
-class MyServerCallbacks: public BLEServerCallbacks {
-    void onConnect(BLEServer* pServer) {
-      deviceConnected = true;
-    }
-
-    void onDisconnect(BLEServer* pServer) {
-      deviceConnected = false;
-      BLEDevice::startAdvertising();
-    }
-
-};
-class MypCharacteristicCallbacks : public BLECharacteristicCallbacks{
-
-  void onWrite(BLECharacteristic *pCharacteristic) {
-      
-  String newCommand;
-  newCommand = pCharacteristic->getValue();
-
-      if(newCommand.substring(0,4) == "down")
-      {
-            currentMenu.item++;
-            // Serial.println("Going down");
-      }
-      else if(newCommand.substring(0,2) == "up")
-      {
-            currentMenu.item--;
-            // Serial.println("Going up");
-      }else if (newCommand.substring(0,4)== "back")
-      {
-        currentMenu.menu = 0;
-        currentMenu.item = 1;
-        currentMenu.len = 3;
-      }
-      else if (newCommand.substring(0,6)== "select")
-      {
-            moveToMenu();
-      }
-      else
-      {
-        newColour = newCommand;
-      }
-
-
-
-    }
 };
 
 bool connectToServer() {
@@ -857,6 +761,18 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks {
 
 
 void setup() {
+  
+  currentMenu.menu = 0;
+  currentMenu.item = 1;
+  currentMenu.len = 3;
+    
+  currentMenu.name = (char*)malloc(strlen("Main")+1);
+  strcpy(currentMenu.name, "Main");
+    
+  currentMenu.options = (char*)malloc(strlen("Animations|Colours|Modes")+1);
+  strcpy(currentMenu.options, "Animations|Colours|Modes");
+  
+  
   Serial.begin(9600);
 
   strip1.begin();
@@ -893,33 +809,6 @@ void setup() {
   pBLEScan->setActiveScan(true);
   pBLEScan->start(5, false);
   
-  // Create the BLE Server
-  // pServer = BLEDevice::createServer();
-  // pServer->setCallbacks(new MyServerCallbacks());
-
-  // // Create the BLE Service
-  // BLEService *pService = pServer->createService(SERVICE_UUID);
-
-  // // Create a BLE Characteristic
-  // pCharacteristic = pService->createCharacteristic(
-  //                     CHARACTERISTIC_UUID,
-  //                     BLECharacteristic::PROPERTY_READ   |
-  //                     BLECharacteristic::PROPERTY_WRITE  
-  //                   );
-  
-  // // Create a BLE Descriptor
-  // pCharacteristic->addDescriptor(new BLE2902());
-  // pCharacteristic->setCallbacks(new MypCharacteristicCallbacks());
-  // // Start the service
-  // pService->start();
-
-  // // Start advertising
-  // BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
-  // pAdvertising->addServiceUUID(SERVICE_UUID);
-  // pAdvertising->setScanResponse(false);
-  // pAdvertising->setMinPreferred(0x0);  // set value to 0x00 to not advertise this parameter
-  // BLEDevice::startAdvertising();
-  //Serial.println("Waiting a client connection to notify...");
 loadingAnimRender();
 diagonalStartRender();
 
@@ -932,18 +821,20 @@ delay(2000);
 //straightLineAnimation(newBlinking);
 //diagonalChange(boyk, 163,6,163);
 
-menuchosen();
-
 
 }
 
 void loop(){
 
-    if (doConnect == true) {
-    if (connectToServer()) {
+  if (doConnect == true) 
+  {
+    if (connectToServer()) 
+    {
       Serial.println("We are now connected to the BLE Server.");
       doConnect = false;
-    } else {
+    } 
+    else 
+    {
       Serial.println("We have failed to connect to the server; there is nothing more we will do.");
     }
 
@@ -1051,9 +942,7 @@ void loop(){
   }
 
   if (connected) {
-    // Set the characteristic's value to be the array of bytes that is actually a string.
-    //    pCharacteristicMoveButton->writeValue(newValue.c_str(), newValue.length());
-    //Serial.print("Current move is: ");
+
     if(pCharacteristicMoveButton->readValue() == "Down")
     {
       if(currentMenu.item <= currentMenu.len)
@@ -1069,30 +958,15 @@ void loop(){
       Serial.println(pCharacteristicMoveButton->readValue());
     }
 
-    //Serial.print("Current select is: ");
+
     if(pCharacteristicSelectButton->readValue() == "Select")
     {
       Serial.println(pCharacteristicSelectButton->readValue());
       moveToMenu();
       pCharacteristicSelectButton->writeValue("Waiting");
     }
-  } else if (doScan) {
-    BLEDevice::getScan()->start(0);  // this is just example to start scan after disconnect, most likely there is better way to do it in arduino
-    delay(1000);
-  }
-  // Serial.print("Current menu: ");
-  // Serial.println(currentMenu.menu);
-  // if(Serial.available() != 0)
-  // {
-  //   //Serial.println("Input detected");
-  //   readUserInput();
-  // }
-  // Serial.print("Current item: ");
-  // Serial.println(currentMenu.item);
+  } 
 
-
-  // Serial.print("Current length: ");
-  // Serial.println(currentMenu.len);
 //Serial.printf("Free heap: %u bytes\n", esp_get_free_heap_size());
   
   
@@ -1104,10 +978,7 @@ if(newColour != oldColour)
   diagonalChangeRender(newBlinking[0], newColour.substring(0,3).toInt(), newColour.substring(4,8).toInt(), newColour.substring(8,12).toInt());    
   oldColour = newColour;
 }
-  
-  
    delay(10);
-
 }
 
 
@@ -1178,5 +1049,3 @@ void runAnimation(int animationID)
 
    
 }
-
-
