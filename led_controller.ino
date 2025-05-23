@@ -24,7 +24,7 @@
 
 #define PIN1        4            // Pin for first matrix
 #define PIN2        5            // Pin for second matrix
-#define WIDTH      15            // Width of the LED matrix 
+#define WIDTH      19            // Width of the LED matrix 
 #define HEIGHT     8             // Height of the LED matrix
 #define NUMPIXELS_PER_STRIP  200 // Total number of LEDs
 
@@ -34,12 +34,12 @@ Adafruit_NeoPixel strip1(NUMPIXELS_PER_STRIP, PIN1, NEO_GRB + NEO_KHZ800);
 Adafruit_NeoPixel strip2(NUMPIXELS_PER_STRIP, PIN2, NEO_GRB + NEO_KHZ800);
 
 //Prepare LEDs to support text
-Adafruit_NeoMatrix matrix1 = Adafruit_NeoMatrix(15, 8, PIN1,
+Adafruit_NeoMatrix matrix1 = Adafruit_NeoMatrix(20, 8, PIN1,
   NEO_MATRIX_BOTTOM     + NEO_MATRIX_RIGHT +
   NEO_MATRIX_COLUMNS + NEO_MATRIX_ZIGZAG,
   NEO_RGB            + NEO_KHZ800);
 
-Adafruit_NeoMatrix matrix2 = Adafruit_NeoMatrix(15, 8, PIN2,
+Adafruit_NeoMatrix matrix2 = Adafruit_NeoMatrix(20, 8, PIN2,
   NEO_MATRIX_TOP     + NEO_MATRIX_LEFT +
   NEO_MATRIX_COLUMNS + NEO_MATRIX_ZIGZAG,
   NEO_RGB            + NEO_KHZ800);
@@ -80,6 +80,7 @@ bool up = false;                    //Rainbow direction
 int rainbowcolour;                  //Rainbow colour
 int colour;                         //Colour out of RGB
 int colourToChange = random(1,4);   //A new colour to pick
+int currentAnimation = 0;           //Current transition animation
 
 //Initial menu WHY?
 byte mainmenu = 1;
@@ -242,16 +243,22 @@ void lineByLineRender(byte const unsigned long frame[8])
       if(row & (1<<n))
       {
         strip1.setPixelColor(getLEDIndex(n,x,true), strip1.Color(Red, Green, Blue));
+        strip2.setPixelColor(getLEDIndex(n,x,true), strip2.Color(Red, Green, Blue));
         strip1.show();
-        delay(10);
+        strip2.show();
+        delay(1);
       }
       else
       {
         strip1.setPixelColor(getLEDIndex(n,x,true), strip1.Color(Red, Green, Blue));
+        strip2.setPixelColor(getLEDIndex(n,x,true), strip2.Color(Red, Green, Blue));
         strip1.show();
-        delay(10);
+        strip2.show();
+        delay(1);
         strip1.setPixelColor(getLEDIndex(n,x,true), strip1.Color(0, 0, 0));
+        strip2.setPixelColor(getLEDIndex(n,x,true), strip2.Color(0, 0, 0));
         strip1.show();
+        strip2.show();
       }
     }
   }
@@ -289,20 +296,22 @@ void straightLineRender(byte const unsigned long frame[8])
     for(int lednum = 0; lednum < 8; lednum++)
     {
         strip1.setPixelColor(led[lednum], strip1.Color(Red, Green, Blue));
-        Serial.println(led[lednum]);
-        
+        strip2.setPixelColor(led[lednum], strip2.Color(Red, Green, Blue));
     }
         strip1.show();
-          delay(20);
+        strip2.show();
+        delay(20);
 
     for(int lednum = 0; lednum < 8; lednum++)
     {
         if(ledStatus[lednum] == 0)
         {
           strip1.setPixelColor(led[lednum], strip1.Color(0,0,0));
+          strip2.setPixelColor(led[lednum], strip1.Color(0,0,0));
         }
     }
     strip1.show();
+    strip2.show();
   }
 
 
@@ -434,10 +443,41 @@ strip2.show();
 
 }
 
+void displayText(const char* text)
+{
+  int lenght = (strlen(text)*7);
+  int matrixsize = (0-(strlen(text)*7));
+  int x = matrix1.width(); 
+
+  for(int y = 0; y < lenght; y++)
+  {
+    matrix1.fillScreen(0);
+    matrix2.fillScreen(0);
+    matrix1.setCursor(x, 0);
+    matrix2.setCursor(x, 0);
+    matrix1.print(F(text));
+    matrix2.print(F(text));
+    if(--x < matrixsize) 
+    { // Lenght of the matrix for the animation
+      x = matrix1.width();
+      x = matrix2.width();
+      matrix1.setTextColor(matrix1.Color(Green,Blue, Red));
+      matrix2.setTextColor(matrix2.Color(Green, Blue, Red));
+    }
+    matrix1.show();
+    matrix2.show();
+    delay(40); //Animation speed
+  }
+}
+
 //Render the loading text animation
 void loadingAnimRender()
 {
-for(int y = 0; y < 57; y++)
+//Length of the animation: 56 for 7 characters
+//Length of the matrix: -40
+//Animation speed 40
+//
+for(int y = 0; y < 56; y++) //Time of the animation roughly 8 per character.
 {
   matrix1.fillScreen(0);
   matrix2.fillScreen(0);
@@ -445,32 +485,35 @@ for(int y = 0; y < 57; y++)
   matrix2.setCursor(x, 0);
   matrix1.print(F("Loading"));
   matrix2.print(F("Loading"));
-  if(--x < -40) { //-36
+  if(--x < -40) { // Lenght of the matrix for the animation
     x = matrix1.width();
     x = matrix2.width();
-    matrix1.setTextColor(matrix1.Color(163, 163, 6));
-    matrix2.setTextColor(matrix2.Color(163, 163, 6));
+
   }
   matrix1.show();
   matrix2.show();
-  delay(40);
+  delay(40); //Animation speed
 }
 }
 //Return to the main menu
 void returnToMainMenu()
 {
-  currentMenu.menu = 3;
+  currentMenu.menu = 0;
   currentMenu.item = 1;
-  currentMenu.len = 2;
+  currentMenu.len = 3;
+    
+
 
   free(currentMenu.name);
   free(currentMenu.options);
 
-  currentMenu.name = (char*)malloc(strlen("Modes")+1);
-  strcpy(currentMenu.name, "Modes");
+  currentMenu.name = (char*)malloc(strlen("Main")+1);
+  strcpy(currentMenu.name, "Main");
+
+  currentMenu.options = (char*)malloc(strlen("Animations|Colours|Modes")+1);
+  strcpy(currentMenu.options, "Animations|Colours|Modes");
     
-  currentMenu.options = (char*)malloc(strlen("Rainbow|Blinking")+1);
-  strcpy(currentMenu.options, "Rainbow|Blinking");
+
 }
 
 //Changes the menu based on the current selected option
@@ -479,7 +522,6 @@ void moveToMenu()
   switch(currentMenu.menu)
   {
     case 0:
-    mainmenu = 0;
       switch(currentMenu.item)
       {
         case 1:
@@ -513,7 +555,19 @@ void moveToMenu()
 
         break;
         case 3:
-          returnToMainMenu();
+        currentMenu.menu = 3;
+        currentMenu.item = 1;
+        currentMenu.len = 3;
+
+        free(currentMenu.name);
+        free(currentMenu.options);
+
+        currentMenu.name = (char*)malloc(strlen("Modes")+1);
+        strcpy(currentMenu.name, "Modes");
+    
+        currentMenu.options = (char*)malloc(strlen("Rainbow|Blinking|Transition")+1);
+        strcpy(currentMenu.options, "Rainbow|Blinking|Transition");
+
         break;
       }
     break;
@@ -569,9 +623,18 @@ void moveToMenu()
           blinking = !blinking;
           break;
           case 3:
+          if(currentAnimation < 2)
+          {
+            currentAnimation++;
+          }
+          else 
+          {
+            currentAnimation = 0;
+          }
+          break;
+          case 4:
             returnToMainMenu();
           break;
-
         }
     break;
   }
@@ -590,8 +653,8 @@ void renderMenu(int menu, int item, int len)
   oled.setTextSize(1);         // set text size
   oled.setTextColor(WHITE);    // set text color
   oled.setCursor(0, 0);       // set position to display
-  oled.print("Colour: "); // set text
-  oled.println(oldColour);
+  oled.print("Animation: "); // set text
+  oled.println(currentAnimation);
 
 
   oled.setTextSize(1);         // set text size
@@ -760,89 +823,9 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks {
 };  // MyAdvertisedDeviceCallbacks
 
 
-void setup() {
-  
-  currentMenu.menu = 0;
-  currentMenu.item = 1;
-  currentMenu.len = 3;
-    
-  currentMenu.name = (char*)malloc(strlen("Main")+1);
-  strcpy(currentMenu.name, "Main");
-    
-  currentMenu.options = (char*)malloc(strlen("Animations|Colours|Modes")+1);
-  strcpy(currentMenu.options, "Animations|Colours|Modes");
-  
-  
-  Serial.begin(9600);
+void rgbMode()
+{
 
-  strip1.begin();
-  strip2.begin();
-
-  strip1.show();  
-  strip2.show();
-
-
-  if (!oled.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
-    Serial.println(F("failed to start SSD1306 OLED"));
-    while (1);
-  }
-
-  delay(1000);
-  matrix1.begin();
-  matrix1.setTextWrap(false);
-  matrix1.setBrightness(40);
-  matrix1.setTextColor(matrix1.Color(3, 248, 248)); 
-
-  matrix2.begin();
-  matrix2.setTextWrap(false);
-  matrix2.setBrightness(40);
-  matrix2.setTextColor(matrix2.Color(3, 248, 248));
-
-
-  // Create the BLE Device
-
-  BLEDevice::init("ProotBrain");
-  BLEScan *pBLEScan = BLEDevice::getScan();
-  pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
-  pBLEScan->setInterval(1349);
-  pBLEScan->setWindow(449);
-  pBLEScan->setActiveScan(true);
-  pBLEScan->start(5, false);
-  
-loadingAnimRender();
-diagonalStartRender();
-
-delay(2000);
-
-
-
-
-//lineByLineAnimation(newBlinking);
-//straightLineAnimation(newBlinking);
-//diagonalChange(boyk, 163,6,163);
-
-
-}
-
-void loop(){
-
-  if (doConnect == true) 
-  {
-    if (connectToServer()) 
-    {
-      Serial.println("We are now connected to the BLE Server.");
-      doConnect = false;
-    } 
-    else 
-    {
-      Serial.println("We have failed to connect to the server; there is nothing more we will do.");
-    }
-
-  }
-
-
-  if(rainbow)
-  {
     // Serial.print("Colour: ");
     // Serial.println(colourToChange);
     // Serial.println(rainbowcolour);
@@ -852,8 +835,7 @@ void loop(){
     // Serial.print(Green);
     // Serial.print("B: ");
     // Serial.println(Blue);
-
-    if(rainbowcolour < 10 || rainbowcolour > 245)
+if(rainbowcolour < 10 || rainbowcolour > 245)
     {
       colourToChange = random(1,4);
       switch (colourToChange)
@@ -939,6 +921,124 @@ void loop(){
     }
     strip1.show(); 
     strip2.show(); 
+}
+
+void animationstyle()
+{
+
+
+  switch (currentAnimation)
+ {
+
+  case 0:
+    diagonalChangeRender(newBlinking[0], newColour.substring(0,3).toInt(), newColour.substring(4,8).toInt(), newColour.substring(8,12).toInt()); 
+  break;
+  case 1:
+    Red = newColour.substring(0,3).toInt();
+    Green = newColour.substring(4,8).toInt();
+    Blue = newColour.substring(8,12).toInt();
+    lineByLineRender(newBlinking[0]);
+  break;
+  case 2:
+    Red = newColour.substring(0,3).toInt();
+    Green = newColour.substring(4,8).toInt();
+    Blue = newColour.substring(8,12).toInt();
+    straightLineRender(newBlinking[0]);
+  break;
+  case 3:
+
+  break;
+ }
+}
+
+void setup() {
+  
+  currentMenu.menu = 0;
+  currentMenu.item = 1;
+  currentMenu.len = 3;
+    
+  currentMenu.name = (char*)malloc(strlen("Main")+1);
+  strcpy(currentMenu.name, "Main");
+    
+  currentMenu.options = (char*)malloc(strlen("Animations|Colours|Modes")+1);
+  strcpy(currentMenu.options, "Animations|Colours|Modes");
+  
+  
+  Serial.begin(9600);
+
+  strip1.begin();
+  strip2.begin();
+
+  strip1.show();  
+  strip2.show();
+
+
+  if (!oled.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println(F("failed to start SSD1306 OLED"));
+    while (1);
+  }
+
+  delay(1000);
+  matrix1.begin();
+  matrix1.setTextWrap(false);
+  matrix1.setBrightness(40);
+  matrix1.setTextColor(matrix1.Color(3, 248, 248)); 
+
+  matrix2.begin();
+  matrix2.setTextWrap(false);
+  matrix2.setBrightness(40);
+  matrix2.setTextColor(matrix2.Color(3, 248, 248));
+
+
+  // Create the BLE Device
+
+  BLEDevice::init("ProotBrain");
+  BLEScan *pBLEScan = BLEDevice::getScan();
+  pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
+  pBLEScan->setInterval(1349);
+  pBLEScan->setWindow(449);
+  pBLEScan->setActiveScan(true);
+  pBLEScan->start(5, false);
+  
+loadingAnimRender();
+
+displayText("Service-Top here. What can I do for you? :3");
+diagonalStartRender();
+
+delay(2000);
+
+
+
+
+//lineByLineAnimation(newBlinking);
+//straightLineAnimation(newBlinking);
+//diagonalChange(boyk, 163,6,163);
+
+
+}
+
+void loop(){
+  
+  if (doConnect == true) 
+  {
+    if (connectToServer()) 
+    {
+      Serial.println("We are now connected to the BLE Server.");
+      doConnect = false;
+    } 
+    else 
+    {
+      Serial.println("We have failed to connect to the server; there is nothing more we will do.");
+    }
+
+  }
+
+
+  if(rainbow)
+  {
+      rgbMode();
+
+    
   }
 
   if (connected) {
@@ -973,12 +1073,12 @@ void loop(){
   renderMenu(currentMenu.menu,  currentMenu.item, currentMenu.len);
 
   
-if(newColour != oldColour)
-{
-  diagonalChangeRender(newBlinking[0], newColour.substring(0,3).toInt(), newColour.substring(4,8).toInt(), newColour.substring(8,12).toInt());    
-  oldColour = newColour;
-}
-   delay(10);
+  if(newColour != oldColour)
+  {
+    animationstyle();
+    oldColour = newColour;
+  }
+  delay(10);
 }
 
 
@@ -1012,7 +1112,6 @@ void runAnimation(int animationID)
  {
 
   case 0:
-  {
     renderFrame(newBlinking[0]);
     delay(50);
     renderFrame(newBlinking[1]);
@@ -1023,7 +1122,6 @@ void runAnimation(int animationID)
     delay(100);
     renderFrame(newBlinking[0]);
  
-  }
   break;
   case 1:
     renderFrame(happy[0]);
@@ -1044,7 +1142,7 @@ void runAnimation(int animationID)
   break;
   default:
 
-    break;
+  break;
  }
 
    
