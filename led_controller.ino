@@ -202,6 +202,52 @@ byte const unsigned long happy[3][8] =
   }
 };
 
+byte const unsigned long eye[4][8]
+{
+  {
+    0x00000,  //00000000000000000000
+    0x00000,  //00000000000000000000
+    0x00000,  //00000000000000000000
+    0xFFFFF,  //11111111111111111111
+    0xFFFFF,  //11111111111111111111
+    0x00000,  //00000000000000000000
+    0x00000,  //00000000000000000000
+    0x00000   //00000000000000000000
+  },
+  {
+    0x00000,  //00000000000000000000
+    0x00000,  //00000000000000000000
+    0x0FFF0,  //00001111111111110000
+    0xFFFFF,  //11111111111111111111
+    0xFFFFF,  //11111111111111111111
+    0x0FFF0,  //00001111111111110000
+    0x00000,  //00000000000000000000
+    0x00000   //00000000000000000000
+  },
+  { 
+    0x00000,  //00000000000000000000
+    0x0FFF0,  //00001111111111110000
+    0x3FFFC,  //00111111111111111100
+    0xFC03F,  //11111100000000111111
+    0xFC03F,  //11111100000000111111
+    0x3FFFC,  //00111111111111111100
+    0x0FFF0,  //00001111111111110000
+    0x00000   //00000000000000000000
+  },
+  { 
+    0x03FC0,  //00000011111111000000
+    0x0FFF0,  //00001111111111110000
+    0x3F0FC,  //00111111000011111100
+    0xFC63F,  //11111100011000111111
+    0xFC63F,  //11111100011000111111
+    0x3F0FC,  //00111111000011111100
+    0x0FFF0,  //00001111111111110000
+    0x03FC0   //00000011111111000000
+  }
+
+
+};
+
 //Boykisser animation
 byte const unsigned long boyk[8] =
 {
@@ -272,7 +318,7 @@ void straightLineRender(byte const unsigned long frame[8])
   int ledStatus[8];
 
 
-  for (int n = 0; n <= 14;n++)
+  for (int n = 0; n <= 19;n++)
   {
     int index = 0;
     for(int x = HEIGHT-1; x >= 0; x--)
@@ -445,10 +491,13 @@ strip2.show();
 
 void displayText(const char* text)
 {
-  int lenght = (strlen(text)*7);
-  int matrixsize = (0-(strlen(text)*7));
+  int lenght = (strlen(text)*9);
+  int matrixsize = (0-(strlen(text)*8.5));
   int x = matrix1.width(); 
-
+  if(strlen(text) > 10)
+  {
+    lenght -= strlen(text);
+  }
   for(int y = 0; y < lenght; y++)
   {
     matrix1.fillScreen(0);
@@ -468,33 +517,12 @@ void displayText(const char* text)
     matrix2.show();
     delay(40); //Animation speed
   }
+    strip1.clear();
+    strip2.clear();
+
 }
 
-//Render the loading text animation
-void loadingAnimRender()
-{
-//Length of the animation: 56 for 7 characters
-//Length of the matrix: -40
-//Animation speed 40
-//
-for(int y = 0; y < 56; y++) //Time of the animation roughly 8 per character.
-{
-  matrix1.fillScreen(0);
-  matrix2.fillScreen(0);
-  matrix1.setCursor(x, 0);
-  matrix2.setCursor(x, 0);
-  matrix1.print(F("Loading"));
-  matrix2.print(F("Loading"));
-  if(--x < -40) { // Lenght of the matrix for the animation
-    x = matrix1.width();
-    x = matrix2.width();
 
-  }
-  matrix1.show();
-  matrix2.show();
-  delay(40); //Animation speed
-}
-}
 //Return to the main menu
 void returnToMainMenu()
 {
@@ -1000,8 +1028,14 @@ void setup() {
   pBLEScan->setActiveScan(true);
   pBLEScan->start(5, false);
   
-loadingAnimRender();
+//loadingAnimRender();
+displayText("Loading");
+Red = 255;
+Green = 0;
+Blue = 0;
+straightLineRender(eye[0]);
 
+runAnimation(2);
 displayText("Service-Top here. What can I do for you? :3");
 diagonalStartRender();
 
@@ -1036,9 +1070,7 @@ void loop(){
 
   if(rainbow)
   {
-      rgbMode();
-
-    
+      rgbMode();    
   }
 
   if (connected) {
@@ -1090,7 +1122,7 @@ void renderFrame(byte const unsigned long animation[8])
   for(int x = 0; x < HEIGHT; x++)
   {
     int row = animation[x]; 
-    for (int n = 14; n >= 0;n--)
+    for (int n = 19; n >= 0;n--)
     {
       if(row & (1<<n))
       {
@@ -1135,6 +1167,22 @@ void runAnimation(int animationID)
     renderFrame(happy[0]);
   break;
   case 2:
+
+    renderFrame(eye[0]);
+    delay(1000);
+    renderFrame(eye[1]); 
+    delay(100);
+    renderFrame(eye[2]);
+    delay(100);
+    renderFrame(eye[3]);
+    delay(2000);
+    renderFrame(eye[2]);
+    delay(100);
+    renderFrame(eye[1]);
+    delay(100);
+    renderFrame(eye[0]);
+    delay(100);
+
 
   break;
   case 3:
