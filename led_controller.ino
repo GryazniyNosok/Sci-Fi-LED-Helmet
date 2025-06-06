@@ -315,6 +315,7 @@ void straightLineRender(byte const unsigned long frame[8])
 {
 
   int led[8];
+  int ledrev[8];
   int ledStatus[8];
 
 
@@ -328,12 +329,14 @@ void straightLineRender(byte const unsigned long frame[8])
         if(row & (1<<n))
         {
           led[index] = getLEDIndex(n,x,true);
+          ledrev[index] = getLEDIndex(n,x);
           ledStatus[index] = 1;
           index++; 
         }
         else
         {
           led[index] = getLEDIndex(n,x,true);
+          ledrev[index] = getLEDIndex(n,x);
           ledStatus[index] = 0;
           index++;
         }
@@ -342,7 +345,7 @@ void straightLineRender(byte const unsigned long frame[8])
     for(int lednum = 0; lednum < 8; lednum++)
     {
         strip1.setPixelColor(led[lednum], strip1.Color(Red, Green, Blue));
-        strip2.setPixelColor(led[lednum], strip2.Color(Red, Green, Blue));
+        strip2.setPixelColor(ledrev[lednum], strip2.Color(Red, Green, Blue));
     }
         strip1.show();
         strip2.show();
@@ -353,7 +356,7 @@ void straightLineRender(byte const unsigned long frame[8])
         if(ledStatus[lednum] == 0)
         {
           strip1.setPixelColor(led[lednum], strip1.Color(0,0,0));
-          strip2.setPixelColor(led[lednum], strip1.Color(0,0,0));
+          strip2.setPixelColor(ledrev[lednum], strip1.Color(0,0,0));
         }
     }
     strip1.show();
@@ -563,8 +566,8 @@ void moveToMenu()
         currentMenu.name = (char*)malloc(strlen("Animations")+1);
         strcpy(currentMenu.name, "Animations");
     
-        currentMenu.options = (char*)malloc(strlen("Blink|Smile|Sad|Confusion|Angry")+1);
-        strcpy(currentMenu.options, "Blink|Smile|Sad|Confusion|Angry");
+        currentMenu.options = (char*)malloc(strlen("Blink|Smile|Eye|Confusion|Angry")+1);
+        strcpy(currentMenu.options, "Blink|Smile|Eye|Confusion|Angry");
         break;
         
         case 2:
@@ -600,7 +603,7 @@ void moveToMenu()
       }
     break;
     case 1:
-      switch(currentMenu.item)
+      switch(currentMenu.item) //Blink|Smile|Eye|Confusion|Angry
       {
         case 1:
           runAnimation(0);
@@ -609,7 +612,9 @@ void moveToMenu()
         case 2:
           runAnimation(1);
         break;
-
+        case 3:
+          runAnimation(2);
+        break;
         case 7:
           returnToMainMenu();
         break;
@@ -642,7 +647,7 @@ void moveToMenu()
       }
     break;
     case 3:
-        switch (currentMenu.item)
+        switch (currentMenu.item) 
         {
           case 1:
           rainbow = !rainbow;
@@ -1033,20 +1038,14 @@ displayText("Loading");
 Red = 255;
 Green = 0;
 Blue = 0;
-straightLineRender(eye[0]);
+straightLineRender(newBlinking[0]);
 
-runAnimation(2);
-displayText("Service-Top here. What can I do for you? :3");
-diagonalStartRender();
+//runAnimation(2);
+//displayText("Service-Top here. What can I do for you? :3");
+//diagonalStartRender();
 
 delay(2000);
 
-
-
-
-//lineByLineAnimation(newBlinking);
-//straightLineAnimation(newBlinking);
-//diagonalChange(boyk, 163,6,163);
 
 
 }
@@ -1167,7 +1166,7 @@ void runAnimation(int animationID)
     renderFrame(happy[0]);
   break;
   case 2:
-
+    straightLineRender(eye[0]);
     renderFrame(eye[0]);
     delay(1000);
     renderFrame(eye[1]); 
@@ -1182,7 +1181,7 @@ void runAnimation(int animationID)
     delay(100);
     renderFrame(eye[0]);
     delay(100);
-
+    straightLineRender(newBlinking[0]);
 
   break;
   case 3:
