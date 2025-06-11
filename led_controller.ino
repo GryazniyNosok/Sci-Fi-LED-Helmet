@@ -82,6 +82,8 @@ int colour;                         //Colour out of RGB
 int colourToChange = random(1,4);   //A new colour to pick
 int currentAnimation = 0;           //Current transition animation
 
+int dancinFUN = 0;
+
 //Initial menu WHY?
 byte mainmenu = 1;
 byte animation_menu = 0;
@@ -200,6 +202,18 @@ byte const unsigned long happy[3][8] =
     0x7E7,  //000011111100111
     0x0183  //000000110000011
   }
+};
+
+byte const unsigned long heart[8]
+{
+  0x00,     //0000000
+  0x36,     //0110110
+  0x49,     //1001001
+  0x41,     //1000001
+  0x41,     //1000001
+  0x22,     //0100010
+  0x14,     //0010100
+  0x08      //0001000
 };
 
 byte const unsigned long eye[4][8]
@@ -573,7 +587,7 @@ void moveToMenu()
         case 2:
         currentMenu.menu = 2;
         currentMenu.item = 1;
-        currentMenu.len = 6;
+        currentMenu.len = 8;
 
         free(currentMenu.name);
         free(currentMenu.options);
@@ -581,8 +595,8 @@ void moveToMenu()
         currentMenu.name = (char*)malloc(strlen("Colours")+1);
         strcpy(currentMenu.name, "Colours");
     
-        currentMenu.options = (char*)malloc(strlen("Purple|Orange|Yellow|Red|Green|Blue")+1);
-        strcpy(currentMenu.options, "Purple|Orange|Yellow|Red|Green|Blue");
+        currentMenu.options = (char*)malloc(strlen("Purple|DimPink|Orange|Yellow|Red|Blue|Green|White")+1);
+        strcpy(currentMenu.options, "Purple|DimPink|Orange|Yellow|Red|Blue|Green|White");
 
         break;
         case 3:
@@ -621,27 +635,33 @@ void moveToMenu()
       }
     break;
     case 2:
-      switch(currentMenu.item) //Purple|Orange|Yellow|Red|Blue|Green
+      switch(currentMenu.item) //Purple|DimPink|Orange|Yellow|Red|Blue|Green|White
       { 
         case 1: //ADD LIGHT, WHITE AND DIM PINK
                 newColour = "163 003 163"; //\\3, 248, 248
         break;
         case 2:
-                newColour = "255 040 000";//Too green
+                newColour = "061 003 163";
         break;
         case 3:
-                newColour = "255 255 006";
+                newColour = "255 040 000";//Too green
         break;
         case 4:
-                newColour = "255 000 000";
+                newColour = "255 255 006";
         break;
         case 5:
-                newColour = "000 255 000";
+                newColour = "255 000 000";
         break;
         case 6:
-                newColour = "000 000 255";
+                newColour = "000 255 000";
         break;
         case 7:
+                newColour = "000 000 255";
+        break;
+        case 8:
+                newColour = "255 255 255";
+        break;
+        case 9:
           returnToMainMenu();
         break;
       }
@@ -686,8 +706,10 @@ void renderMenu(int menu, int item, int len)
   oled.setTextSize(1);         // set text size
   oled.setTextColor(WHITE);    // set text color
   oled.setCursor(0, 0);       // set position to display
-  oled.print("Animation: "); // set text
-  oled.println(currentAnimation);
+  oled.print("Memory: ");
+  oled.println(esp_get_free_heap_size());
+  //oled.print("Animation: "); // set text
+  //oled.println(currentAnimation);
 
 
   oled.setTextSize(1);         // set text size
@@ -956,6 +978,72 @@ if(rainbowcolour < 10 || rainbowcolour > 245)
     strip2.show(); 
 }
 
+
+void dancin()
+{
+strip1.setBrightness(255);
+strip2.setBrightness(255);
+if(dancinFUN == 0)
+{
+  if(Red > 150)
+  {
+    Red -= 10;
+  }
+  else
+  {
+    dancinFUN = 1;
+  }
+}else if (dancinFUN == 1)
+{
+  if(Red < 245)
+  {
+    Red += 10;
+  }
+  else
+  {
+    dancinFUN = 2;
+  }
+}else if(dancinFUN == 2)
+{
+  if(Green > 200)
+  {
+    Green -= 10;
+  }
+  else
+  {
+    dancinFUN = 3;
+  } 
+}else
+{
+if(Green > 245)
+  {
+    Green += 10;
+  }
+  else
+  {
+    dancinFUN = 0;
+  }
+}
+
+
+    strip1.clear();
+    strip2.clear();
+    for(int x = 0; x < HEIGHT; x++)
+    {
+      int row = newBlinking[0][x]; 
+      for (int n = 14; n >= 0;n--)
+      {
+        if(row & (1<<n))
+        {
+          strip1.setPixelColor(getLEDIndex(n,x,true), strip1.Color(Red, Green, Blue));
+          strip2.setPixelColor(getLEDIndex(n,x), strip2.Color(Red, Green, Blue));
+        }
+      }
+    }
+    strip1.show(); 
+    strip2.show(); 
+}
+
 void animationstyle()
 {
 
@@ -1034,18 +1122,22 @@ void setup() {
   pBLEScan->start(5, false);
   
 //loadingAnimRender();
-displayText("Loading");
+//displayText("Loading");
+
+strip1.setBrightness(50);
+strip2.setBrightness(50);
 Red = 255;
-Green = 0;
+Green = 255;
 Blue = 0;
-straightLineRender(newBlinking[0]);
+
+
 
 //runAnimation(2);
 //displayText("Service-Top here. What can I do for you? :3");
 //diagonalStartRender();
-
+renderPartical(heart);
+straightLineRender(newBlinking[0]);
 delay(2000);
-
 
 
 }
@@ -1066,6 +1158,7 @@ void loop(){
 
   }
 
+  //dancin();
 
   if(rainbow)
   {
@@ -1113,9 +1206,46 @@ void loop(){
 }
 
 
-void renderFrame(byte const unsigned long animation[8])
+//Take a symbol smaller than the matrix and render multiple instances
+void renderPartical(byte const unsigned long animation[8])
 {
 
+
+//-Start Position > widthofAnimation * number of instanses
+//Travel distance
+int sizeOfAnimation = 7;
+int numberOfReps = 6;
+
+for(int startPosition = 0-(sizeOfAnimation*(numberOfReps+1)); startPosition < 20; startPosition++)
+{ 
+  strip1.clear();
+  strip2.clear();
+  for(int r = 0; r < 6; r++)
+  {
+    for(int x = 0; x < HEIGHT; x++)
+    {
+      int row = animation[x];
+
+        for (int n = 7; n>=0; n--)
+        {
+          if(row & (1<<n))
+          {
+          strip1.setPixelColor(getLEDIndex(n+startPosition+((sizeOfAnimation+1)*r),x,true), strip1.Color(Red, Green, Blue));
+          strip2.setPixelColor(getLEDIndex(n+startPosition+((sizeOfAnimation+1)*r),x), strip2.Color(Red, Green, Blue));
+          }
+      
+      }
+
+    }
+  }
+  strip1.show(); 
+  strip2.show(); 
+  delay(50);
+}
+}
+
+void renderFrame(byte const unsigned long animation[8])
+{
   strip1.clear();
   strip2.clear();
   for(int x = 0; x < HEIGHT; x++)
@@ -1138,7 +1268,8 @@ void renderFrame(byte const unsigned long animation[8])
 // Function to map 2D design array to the NeoPixel strip and display it
 void runAnimation(int animationID) 
 {
- 
+strip1.setBrightness(255);
+strip2.setBrightness(255);
  switch (animationID)
  {
 
