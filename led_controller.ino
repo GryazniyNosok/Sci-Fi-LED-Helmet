@@ -15,12 +15,9 @@
  #define PSTR // Make Arduino Due happy
 #endif
 
-
 //Screen resolution
 #define SCREEN_WIDTH 128 // OLED width,  in pixels
 #define SCREEN_HEIGHT 64 // OLED height, in pixels
-
-
 
 #define PIN1        4            // Pin for first matrix
 #define PIN2        5            // Pin for second matrix
@@ -49,11 +46,29 @@ int Red = 163;
 int Green = 6;
 int Blue = 163;
 
+///////MODES///////
+bool caramelldansen = false;
+int caramelldansenColour = 0;
+bool up = false;                    //Rainbow direction
+
+bool rainbow = false;   //Raindow toggle
+int rainbowcolour;                  //Rainbow colour
+int colour;                         //Colour out of RGB
+int colourToChange = random(1,4);   //A new colour to pick
+
+int currentAnimation = 0;           //Current transition animation
+int dancinFUN = 0;
+bool dancinMode = false;
+
+int blinkingInterval = random(20,150);
+int blinkingClock = 0;
+bool blinking = true;
+///////MODES///////
+
 //Client ID and Services ID
 static BLEUUID SERVICE_UUID("4fafc201-1fb5-459e-8fcc-c5c9c331914b");
 static BLEUUID moveButtonUUID("beb5483e-36e1-4688-b7f5-ea07361b26a8");
 static BLEUUID selectButtonUUID("beb5483e-36e1-4688-b7f5-ea07361b26a2");
-
 
 static boolean doConnect = false;   //Try to connect
 static boolean connected = false;   //If BLE connection was succseful. 
@@ -72,23 +87,6 @@ static BLERemoteCharacteristic *pCharacteristicMoveButton;
 static BLERemoteCharacteristic *pCharacteristicSelectButton;
 static BLEAdvertisedDevice *myDevice;
 
-
-bool rainbow = false;   //Raindow toggle
-bool blinking = false;  //Blinking toggle
-
-bool up = false;                    //Rainbow direction
-int rainbowcolour;                  //Rainbow colour
-int colour;                         //Colour out of RGB
-int colourToChange = random(1,4);   //A new colour to pick
-int currentAnimation = 0;           //Current transition animation
-
-int dancinFUN = 0;
-
-//Initial menu WHY?
-byte mainmenu = 1;
-byte animation_menu = 0;
-byte colour_menu = 0;
-
 //Structure for current menu
 struct SelectedMenu{
   int menu;
@@ -102,7 +100,6 @@ SelectedMenu currentMenu;
 
 //Prepare the OLED screen
 Adafruit_SSD1306 oled(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
-
 
 uint32_t value = 0;       //What's this?
 String oldColour;         //Old colour for BLE
@@ -214,6 +211,33 @@ byte const unsigned long heart[8]
   0x22,     //0100010
   0x14,     //0010100
   0x08      //0001000
+};
+
+byte const unsigned long cross[8]
+{
+  0x04,     //00100
+  0x04,     //00100
+  0x1F,     //11111
+  0x04,     //00100
+  0x04,     //00100
+  0x04,     //00100
+  0x04,     //00100
+  0x04      //00100
+
+};
+byte const unsigned long AFK[8]
+{
+  0x10000,
+  0x10F92,
+  0x28814,
+  0x28818,
+  0x44F10,    //01000100111100010000
+  0x7C818,    //01111100100000011000
+  0x82814,    //10000010100000010100
+  0x82812     //10000010100000010010
+
+
+
 };
 
 byte const unsigned long eye[4][8]
@@ -506,6 +530,22 @@ strip2.show();
 
 }
 
+void displayStaticText(const char* text)
+{
+
+    matrix1.fillScreen(0);
+    matrix2.fillScreen(0);
+    matrix1.setCursor(3, 0);
+    matrix2.setCursor(0, 0);
+    matrix1.setTextColor(matrix1.Color(Green,Red, Blue));
+    matrix2.setTextColor(matrix2.Color(Green,Red, Blue));
+    matrix1.print(F(text));
+    matrix2.print(F(text));
+    matrix1.show();
+    matrix2.show();
+
+}
+
 void displayText(const char* text)
 {
   int lenght = (strlen(text)*9);
@@ -521,14 +561,15 @@ void displayText(const char* text)
     matrix2.fillScreen(0);
     matrix1.setCursor(x, 0);
     matrix2.setCursor(x, 0);
+    matrix1.setTextColor(matrix1.Color(Green,Red, Blue));
+    matrix2.setTextColor(matrix2.Color(Green,Red, Blue));
     matrix1.print(F(text));
     matrix2.print(F(text));
     if(--x < matrixsize) 
     { // Lenght of the matrix for the animation
       x = matrix1.width();
       x = matrix2.width();
-      matrix1.setTextColor(matrix1.Color(Green,Blue, Red));
-      matrix2.setTextColor(matrix2.Color(Green, Blue, Red));
+
     }
     matrix1.show();
     matrix2.show();
@@ -572,7 +613,7 @@ void moveToMenu()
         case 1:
         currentMenu.menu = 1;
         currentMenu.item = 1;
-        currentMenu.len = 6;
+        currentMenu.len = 8;
         
         free(currentMenu.name);
         free(currentMenu.options);
@@ -580,8 +621,8 @@ void moveToMenu()
         currentMenu.name = (char*)malloc(strlen("Animations")+1);
         strcpy(currentMenu.name, "Animations");
     
-        currentMenu.options = (char*)malloc(strlen("Blink|Smile|Eye|Confusion|Angry")+1);
-        strcpy(currentMenu.options, "Blink|Smile|Eye|Confusion|Angry");
+        currentMenu.options = (char*)malloc(strlen("Blink|Smile|Eye|NotCute|Cross|Hearts|Lucian|Nuzzles")+1);
+        strcpy(currentMenu.options, "Blink|Smile|Eye|NotCute|Cross|Hearts|Lucian|Nuzzles");
         break;
         
         case 2:
@@ -602,7 +643,7 @@ void moveToMenu()
         case 3:
         currentMenu.menu = 3;
         currentMenu.item = 1;
-        currentMenu.len = 3;
+        currentMenu.len = 6;
 
         free(currentMenu.name);
         free(currentMenu.options);
@@ -610,14 +651,14 @@ void moveToMenu()
         currentMenu.name = (char*)malloc(strlen("Modes")+1);
         strcpy(currentMenu.name, "Modes");
     
-        currentMenu.options = (char*)malloc(strlen("Rainbow|Blinking|Transition")+1);
-        strcpy(currentMenu.options, "Rainbow|Blinking|Transition");
+        currentMenu.options = (char*)malloc(strlen("Rainbow|Blinking|Transition|Dancin|Caramel|AFK")+1);
+        strcpy(currentMenu.options, "Rainbow|Blinking|Transition|Dancin|Caramel|AFK");
 
         break;
       }
     break;
     case 1:
-      switch(currentMenu.item) //Blink|Smile|Eye|Confusion|Angry
+      switch(currentMenu.item) //Blink|Smile|Eye|NotCute|Cross|Hearts|Lucian|Nuzzles
       {
         case 1:
           runAnimation(0);
@@ -629,7 +670,30 @@ void moveToMenu()
         case 3:
           runAnimation(2);
         break;
-        case 7:
+        case 4:
+        displayText("Not Cute >:(");
+        renderFrame(newBlinking[0]);
+        break;
+        case 5: //Crosses
+          renderPartical(cross);
+        break;
+        case 6: //Hearts
+          renderPartical(heart);
+        break;
+        case 7: 
+          Green = 0;
+          Red = 255;
+          Blue = 0;
+          displayText("Happy Bday Lucian");
+        
+          runAnimation(2);
+          straightLineRender(newBlinking[0]);
+        break;
+        case 8:
+          displayText("<3 Nuzzles <3");
+          straightLineRender(newBlinking[0]);
+        break; 
+        case 9:
           returnToMainMenu();
         break;
       }
@@ -667,7 +731,7 @@ void moveToMenu()
       }
     break;
     case 3:
-        switch (currentMenu.item) 
+        switch (currentMenu.item) //Rainbow|Blinking|Transition|Dancin|Caramel|AFK
         {
           case 1:
           rainbow = !rainbow;
@@ -686,6 +750,41 @@ void moveToMenu()
           }
           break;
           case 4:
+            dancinMode = !dancinMode;
+            if(dancinMode)
+            {
+              Red = 255;
+              Green = 255;
+              Blue = 0;
+              strip1.setBrightness(255);
+              strip2.setBrightness(255);
+            }
+            else
+            {
+              strip1.setBrightness(50);
+              strip2.setBrightness(50);
+              renderFrame(newBlinking[0]);
+            }
+          break;
+          case 5:
+            caramelldansen = !caramelldansen;
+            if(caramelldansen)
+            {
+              strip1.setBrightness(255);
+              strip2.setBrightness(255);
+            }
+            else
+            {
+              strip1.setBrightness(50);
+              strip2.setBrightness(50);
+              renderFrame(newBlinking[0]);
+            }
+          break;
+          case 6:
+            displayStaticText("AFK");
+            blinking = false;
+          break;
+          case 7:
             returnToMainMenu();
           break;
         }
@@ -717,13 +816,14 @@ void renderMenu(int menu, int item, int len)
   oled.setCursor(0, 10);       // set position to display
   oled.print("Menu: "); // set text
   oled.println(currentMenu.name);
+  
 
   oled.drawLine(0,20,127,20,WHITE);
 
-  item -= 1;
+  item -= 1; //-1 because items need to start from 0
   int pos = 0;
   int pages = len / 4;
-  int currentpage = (currentMenu.item / 4);
+  int currentpage = (item / 3);
   char *tempname;
   char *tempoptions;
 
@@ -733,7 +833,8 @@ void renderMenu(int menu, int item, int len)
 
   tempname = strtok(tempoptions,"|");
   
-  for(int i = 0; i < currentpage; i++)
+  //Skip the first 3*currentpage options. 
+  for(int i = 0; i < currentpage; i++) 
     {
       tempname = strtok(nullptr, "|"); 
       tempname = strtok(nullptr, "|"); 
@@ -747,7 +848,7 @@ void renderMenu(int menu, int item, int len)
     oled.setTextColor(WHITE);    // set text color
     oled.setCursor(0, (x * 10 + 22));       // set position to display
     
-    if((currentpage*3)+x == item)
+    if((currentpage*3)+x == item && item != currentMenu.len)
     {
       oled.print(">");
     }
@@ -764,7 +865,7 @@ void renderMenu(int menu, int item, int len)
   oled.setTextColor(WHITE);    // set text color
   oled.setCursor(0, (++pos * 10 + 22));       // set position to display
   
-  if( currentMenu.len== item)
+  if(currentMenu.len == item) //Must be current length +1
   {
     oled.print(">");
   }
@@ -781,6 +882,11 @@ class MyClientCallback : public BLEClientCallbacks {
   void onDisconnect(BLEClient *pclient) {
     doConnect = true;
     connected = false;
+    BLEScan *pBLEScan = BLEDevice::getScan();
+    pBLEScan->setInterval(1349); 
+    pBLEScan->setWindow(449);
+    pBLEScan->setActiveScan(true);
+    pBLEScan->start(5, false);
     Serial.println("onDisconnect");
   }
 };
@@ -981,8 +1087,7 @@ if(rainbowcolour < 10 || rainbowcolour > 245)
 
 void dancin()
 {
-strip1.setBrightness(255);
-strip2.setBrightness(255);
+
 if(dancinFUN == 0)
 {
   if(Red > 150)
@@ -1024,24 +1129,43 @@ if(Green > 245)
     dancinFUN = 0;
   }
 }
+      renderFrame(newBlinking[0]);
+}
 
+void caramelldancen()
+{
 
-    strip1.clear();
-    strip2.clear();
-    for(int x = 0; x < HEIGHT; x++)
+    //Serial.println(caramelldansenColour);
+    switch(caramelldansenColour)
     {
-      int row = newBlinking[0][x]; 
-      for (int n = 14; n >= 0;n--)
-      {
-        if(row & (1<<n))
-        {
-          strip1.setPixelColor(getLEDIndex(n,x,true), strip1.Color(Red, Green, Blue));
-          strip2.setPixelColor(getLEDIndex(n,x), strip2.Color(Red, Green, Blue));
-        }
-      }
+      case 0:
+        Red = 255;
+        Green = 0;
+        Blue = 0;
+        caramelldansenColour++;
+      break;
+      case 1:
+        Red = 0;
+        Green = 255;
+        Blue = 0;
+        caramelldansenColour++;
+      break;
+      case 2:
+        Red = 61;
+        Green = 3;
+        Blue = 163;
+        caramelldansenColour++;
+      break;
+      case 3:
+        Red = 255;
+        Green = 40;
+        Blue = 0;
+        caramelldansenColour = 0;
+      break;
+
     }
-    strip1.show(); 
-    strip2.show(); 
+      renderFrame(newBlinking[0]);
+      delay(300);
 }
 
 void animationstyle()
@@ -1122,29 +1246,32 @@ void setup() {
   pBLEScan->start(5, false);
   
 //loadingAnimRender();
+
+
+//runAnimation(2);  
 //displayText("Loading");
 
 strip1.setBrightness(50);
 strip2.setBrightness(50);
-Red = 255;
-Green = 255;
-Blue = 0;
 
-
-
-//runAnimation(2);
+//renderFrame(AFK);
+//displayStaticText("AFK");
+//displayText("AFK");
+//runAnimation(2);  
 //displayText("Service-Top here. What can I do for you? :3");
 //diagonalStartRender();
-renderPartical(heart);
+//renderPartical(cross);
+//renderPartical(heart);
 straightLineRender(newBlinking[0]);
 delay(2000);
 
-
 }
+
+
 
 void loop(){
   
-  if (doConnect == true) 
+  if (doConnect) 
   {
     if (connectToServer()) 
     {
@@ -1158,7 +1285,28 @@ void loop(){
 
   }
 
-  //dancin();
+
+  if(blinking)
+  {
+    blinkingClock++;
+    Serial.println(blinkingClock);
+    if(blinkingClock > blinkingInterval)
+    {
+      blinkingClock = 0;
+      blinkingInterval = random(20,150);
+      runAnimation(0);
+   }
+  }
+
+  if(dancinMode)
+  {
+    dancin();
+  }
+
+  if(caramelldansen)
+  {
+    caramelldancen();
+  }
 
   if(rainbow)
   {
@@ -1213,7 +1361,8 @@ void renderPartical(byte const unsigned long animation[8])
 
 //-Start Position > widthofAnimation * number of instanses
 //Travel distance
-int sizeOfAnimation = 7;
+int sizeOfAnimation = sizeof(animation[x])+3; //Size of 4 plus 3 because 7 is the size of this animation.
+//Serial.println(sizeof(animation[x]));
 int numberOfReps = 6;
 
 for(int startPosition = 0-(sizeOfAnimation*(numberOfReps+1)); startPosition < 20; startPosition++)
@@ -1242,6 +1391,7 @@ for(int startPosition = 0-(sizeOfAnimation*(numberOfReps+1)); startPosition < 20
   strip2.show(); 
   delay(50);
 }
+          straightLineRender(newBlinking[0]);
 }
 
 void renderFrame(byte const unsigned long animation[8])
@@ -1268,8 +1418,7 @@ void renderFrame(byte const unsigned long animation[8])
 // Function to map 2D design array to the NeoPixel strip and display it
 void runAnimation(int animationID) 
 {
-strip1.setBrightness(255);
-strip2.setBrightness(255);
+
  switch (animationID)
  {
 
@@ -1312,7 +1461,7 @@ strip2.setBrightness(255);
     delay(100);
     renderFrame(eye[0]);
     delay(100);
-    straightLineRender(newBlinking[0]);
+
 
   break;
   case 3:
