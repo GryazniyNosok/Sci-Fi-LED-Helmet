@@ -15,31 +15,32 @@
  #define PSTR // Make Arduino Due happy
 #endif
 
-//Screen resolution
-#define SCREEN_WIDTH 128 // OLED width,  in pixels
-#define SCREEN_HEIGHT 64 // OLED height, in pixels
-
-#define PIN1        4            // Pin for first matrix
-#define PIN2        5            // Pin for second matrix
-#define WIDTH      19            // Width of the LED matrix 
-#define HEIGHT     8             // Height of the LED matrix
-#define NUMPIXELS_PER_STRIP  200 // Total number of LEDs
+//LED setup
+#define SCREEN_WIDTH          128 
+#define SCREEN_HEIGHT         64 
+#define MATRIX_ONE_PIN        4
+#define MATRIX_TWO_PIN        5            
+#define WIDTH                 19            
+#define HEIGHT                8             
+#define NUMPIXELS_PER_STRIP   200 //This number doesn't make sense but the code doesn't work without it
 
 
 //Prepare LEDs
-Adafruit_NeoPixel strip1(NUMPIXELS_PER_STRIP, PIN1, NEO_GRB + NEO_KHZ800);
-Adafruit_NeoPixel strip2(NUMPIXELS_PER_STRIP, PIN2, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel strip1(NUMPIXELS_PER_STRIP, MATRIX_ONE_PIN, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel strip2(NUMPIXELS_PER_STRIP, MATRIX_TWO_PIN, NEO_GRB + NEO_KHZ800);
+
 
 //Prepare LEDs to support text
-Adafruit_NeoMatrix matrix1 = Adafruit_NeoMatrix(20, 8, PIN1,
+Adafruit_NeoMatrix matrix1 = Adafruit_NeoMatrix(WIDTH, HEIGHT, MATRIX_ONE_PIN,
   NEO_MATRIX_BOTTOM     + NEO_MATRIX_RIGHT +
   NEO_MATRIX_COLUMNS + NEO_MATRIX_ZIGZAG,
   NEO_RGB            + NEO_KHZ800);
 
-Adafruit_NeoMatrix matrix2 = Adafruit_NeoMatrix(20, 8, PIN2,
+Adafruit_NeoMatrix matrix2 = Adafruit_NeoMatrix(WIDTH, HEIGHT, MATRIX_TWO_PIN,
   NEO_MATRIX_TOP     + NEO_MATRIX_LEFT +
   NEO_MATRIX_COLUMNS + NEO_MATRIX_ZIGZAG,
   NEO_RGB            + NEO_KHZ800);
+
 
 //Default colour 
 int Red = 163;
@@ -47,22 +48,25 @@ int Green = 6;
 int Blue = 163;
 
 ///////MODES///////
-bool caramelldansen = false;
-int caramelldansenColour = 0;
-bool up = false;                    //Rainbow direction
+bool is_caramelldansen = false;
+int caramell_dansen_Colour = 0;
+bool is_caramelldansen_going_up = false;                    
 
-bool rainbow = false;   //Raindow toggle
-int rainbowcolour;                  //Rainbow colour
-int colour;                         //Colour out of RGB
-int colourToChange = random(1,4);   //A new colour to pick
+
+bool is_rainbow = false;   
+int rainbowcolour;                  
+int colour;                         //Colour value of a specific colour to alter for the transition effect
+int colourToChange = random(1,4);   
+
 
 int currentAnimation = 0;           //Current transition animation
-int dancinFUN = 0;
-bool dancinMode = false;
 
+int dancinFUN = 0;
+bool is_dancinMode = false;
+
+bool is_blinking = true;
 int blinkingInterval = random(20,150);
 int blinkingClock = 0;
-bool blinking = true;
 ///////MODES///////
 
 //Client ID and Services ID
@@ -734,10 +738,10 @@ void moveToMenu()
         switch (currentMenu.item) //Rainbow|Blinking|Transition|Dancin|Caramel|AFK
         {
           case 1:
-          rainbow = !rainbow;
+          is_raindow = !is_raindow;
           break;
           case 2:
-          blinking = !blinking;
+          is_blinking = !is_blinking;
           break;
           case 3:
           if(currentAnimation < 2)
@@ -750,10 +754,10 @@ void moveToMenu()
           }
           break;
           case 4:
-            dancinMode = !dancinMode;
-            if(dancinMode)
+            is_dancinMode = !is_dancinMode;
+            if(is_dancinMode)
             {
-              Red = 255;
+              Red = 0;
               Green = 255;
               Blue = 0;
               strip1.setBrightness(255);
@@ -767,8 +771,8 @@ void moveToMenu()
             }
           break;
           case 5:
-            caramelldansen = !caramelldansen;
-            if(caramelldansen)
+            is_caramelldansen = !is_caramelldansen;
+            if(is_caramelldansen)
             {
               strip1.setBrightness(255);
               strip2.setBrightness(255);
@@ -782,7 +786,7 @@ void moveToMenu()
           break;
           case 6:
             displayStaticText("AFK");
-            blinking = false;
+            is_blinking = false;
           break;
           case 7:
             returnToMainMenu();
@@ -1014,14 +1018,14 @@ if(rainbowcolour < 10 || rainbowcolour > 245)
     }
     if(rainbowcolour > 245)
     {
-      up = false;
+      is_caramelldansen_going_up = false;
     }
     else if(rainbowcolour < 10)
     {
-      up = true;
+      is_caramelldansen_going_up = true;
     }
 
-    if(up)
+    if(is_caramelldansen_going_up)
     {
       rainbowcolour += 5;
     }
@@ -1032,7 +1036,7 @@ if(rainbowcolour < 10 || rainbowcolour > 245)
     switch (colourToChange)
     {
       case 1:
-      if(up)
+      if(is_caramelldansen_going_up)
       {
         Red += 5;
       }
@@ -1042,7 +1046,7 @@ if(rainbowcolour < 10 || rainbowcolour > 245)
       } 
       break;
       case 2:
-      if(up)
+      if(is_caramelldansen_going_up)
       {
         Green+= 5;
       }
@@ -1052,7 +1056,7 @@ if(rainbowcolour < 10 || rainbowcolour > 245)
       }
       break;
       case 3:
-      if(up)
+      if(is_caramelldansen_going_up)
       {
         Blue+= 5;
       }
@@ -1090,9 +1094,9 @@ void dancin()
 
 if(dancinFUN == 0)
 {
-  if(Red > 150)
+  if(Red < 240)
   {
-    Red -= 10;
+    Red += 20;
   }
   else
   {
@@ -1100,35 +1104,57 @@ if(dancinFUN == 0)
   }
 }else if (dancinFUN == 1)
 {
-  if(Red < 245)
+  if(Red > 15)
   {
-    Red += 10;
+    Red -= 20;
   }
-  else
-  {
-    dancinFUN = 2;
-  }
-}else if(dancinFUN == 2)
-{
-  if(Green > 200)
-  {
-    Green -= 10;
-  }
-  else
-  {
-    dancinFUN = 3;
-  } 
-}else
-{
-if(Green > 245)
-  {
-    Green += 10;
-  }
-  else
+  else 
   {
     dancinFUN = 0;
   }
 }
+
+// if(dancinFUN == 0)
+// {
+//   if(Red > 150)
+//   {
+//     Red -= 20;
+//   }
+//   else
+//   {
+//     dancinFUN = 1;
+//   }
+// }else if (dancinFUN == 1)
+// {
+//   if(Red < 245)
+//   {
+//     Red += 20;
+//   }
+//   else
+//   {
+//     dancinFUN = 2;
+//   }
+// }else if(dancinFUN == 2)
+// {
+//   if(Green > 200)
+//   {
+//     Green -= 20;
+//   }
+//   else
+//   {
+//     dancinFUN = 3;
+//   } 
+// }else
+// {
+// if(Green > 245)
+//   {
+//     Green += 20;
+//   }
+//   else
+//   {
+//     dancinFUN = 0;
+//   }
+// }
       renderFrame(newBlinking[0]);
 }
 
@@ -1136,31 +1162,31 @@ void caramelldancen()
 {
 
     //Serial.println(caramelldansenColour);
-    switch(caramelldansenColour)
+    switch(caramell_dansen_Colour)
     {
       case 0:
         Red = 255;
         Green = 0;
         Blue = 0;
-        caramelldansenColour++;
+        caramell_dansen_Colour++;
       break;
       case 1:
         Red = 0;
         Green = 255;
         Blue = 0;
-        caramelldansenColour++;
+        caramell_dansen_Colour++;
       break;
       case 2:
         Red = 61;
         Green = 3;
         Blue = 163;
-        caramelldansenColour++;
+        caramell_dansen_Colour++;
       break;
       case 3:
         Red = 255;
         Green = 40;
         Blue = 0;
-        caramelldansenColour = 0;
+        caramell_dansen_Colour = 0;
       break;
 
     }
@@ -1286,7 +1312,7 @@ void loop(){
   }
 
 
-  if(blinking)
+  if(is_blinking)
   {
     blinkingClock++;
     Serial.println(blinkingClock);
@@ -1298,17 +1324,17 @@ void loop(){
    }
   }
 
-  if(dancinMode)
+  if(is_dancinMode)
   {
     dancin();
   }
 
-  if(caramelldansen)
+  if(is_caramelldansen)
   {
     caramelldancen();
   }
 
-  if(rainbow)
+  if(is_raindow)
   {
       rgbMode();    
   }
@@ -1350,7 +1376,7 @@ void loop(){
     animationstyle();
     oldColour = newColour;
   }
-  delay(10);
+
 }
 
 
