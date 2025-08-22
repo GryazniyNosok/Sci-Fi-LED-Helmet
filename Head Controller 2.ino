@@ -11,6 +11,7 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_NeoMatrix.h>
 #include <BLEAdvertisedDevice.h>
+#include <animations.h>
 // # Xbm Bitmap example
 // ## Requirements
 // * To generate the required Xbm data to be copied into the Sketch. Have python and [paint.net](https://www.getpaint.net/) installed.
@@ -86,24 +87,7 @@ SelectedMenu currentMenu;
 
 Adafruit_SSD1306 oled(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
-static char default_smile[] = {
-0xff, 0x1f, 0x00, 0x00, 0x00, 0xf8, 0xf8, 0xf8, 0xff, 0x07, 0x00, 0x00, 0x00, 0x7c, 0x7c, 0x7c,
-0xff, 0x01, 0x00, 0x00, 0x00, 0x3e, 0x3e, 0x3e, 0x7f, 0x00, 0x00, 0x00, 0x00, 0x1f, 0x1f, 0x1f,
-0x1f, 0x00, 0x00, 0x00, 0x80, 0x8f, 0x8f, 0x0f, 0x07, 0x00, 0x00, 0x00, 0xc0, 0xc7, 0xc7, 0x07,
-0x01, 0x00, 0x00, 0x00, 0xe0, 0xe3, 0xe3, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc0, 0xff,
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf8, 0xff,  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xfe, 0x3f,
-0x00, 0x7e, 0x00, 0x00, 0x00, 0x80, 0xff, 0x01, 0xc0, 0xff, 0x03, 0x00, 0x00, 0xe0, 0x3f, 0x00,
-0xf0, 0xff, 0x07, 0x00, 0x00, 0xfc, 0x0f, 0x00, 0xf8, 0xff, 0x0f, 0x00, 0x00, 0xff, 0x03, 0x00,
-0xfc, 0x81, 0x1f, 0x00, 0xe0, 0x7f, 0x00, 0x00, 0x7e, 0x00, 0x3f, 0x00, 0xfe, 0x1f, 0x00, 0x00,
-0x3f, 0x00, 0xfe, 0xc0, 0xff, 0x07, 0x00, 0x00, 0x1f, 0x00, 0xfc, 0xf9, 0x7f, 0x00, 0x00, 0x00,
-0x0f, 0x00, 0xf8, 0xff, 0x0f, 0x00, 0x00, 0x00, 0x07, 0x00, 0xe0, 0xff, 0x01, 0x00, 0x00, 0x00,
-0x00, 0x00, 0x80, 0x3f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-,};
+
 
 
 //Client ID and Services ID
@@ -417,8 +401,6 @@ void glitchy_animation()
     offsetclock = -1;
   }
 
-
-
   for(int i = 0; i < 64; i++)
   {
     if(offsetarray[i] > 0)
@@ -463,7 +445,7 @@ void moveToMenu()
         case 1:
         currentMenu.menu = 1;
         currentMenu.item = 1;
-        currentMenu.len = 8;
+        currentMenu.len = 9;
         
         free(currentMenu.name);
         free(currentMenu.options);
@@ -471,8 +453,8 @@ void moveToMenu()
         currentMenu.name = (char*)malloc(strlen("Animations")+1);
         strcpy(currentMenu.name, "Animations");
     
-        currentMenu.options = (char*)malloc(strlen("Blink|Smile|Eye|NotCute|Cross|Hearts|Lucian|Nuzzles")+1);
-        strcpy(currentMenu.options, "Blink|Smile|Eye|NotCute|Cross|Hearts|Lucian|Nuzzles");
+        currentMenu.options = (char*)malloc(strlen("Reset|Bite|Mouth|Eye|NotCute|Cross|Hearts|Love|Nuzzles")+1);
+        strcpy(currentMenu.options, "Reset|Bite|Mouth|Eye|NotCute|Cross|Hearts|Love|Nuzzles");
         break;
         
         case 2:
@@ -508,42 +490,53 @@ void moveToMenu()
       }
     break;
     case 1:
-      switch(currentMenu.item) //Blink|Smile|Eye|NotCute|Cross|Hearts|Lucian|Nuzzles
+      switch(currentMenu.item) //Reset|Bite|Mouth|Eye|NotCute|Cross|Hearts|Love|Nuzzles
       {
         case 1:
-          //runAnimation(0);
+            reset_face();
+        break;
+        case 2:
+          animation_bite();
         break;
 
-        case 2:
-          //runAnimation(1);
-        break;
         case 3:
-          //runAnimation(2);
+          dma_display->clearScreen();
+          simple_RGB_render(64,0, 64, 32, PROTOBITE1_bits[0], old_colour);
+          simple_RGB_render(0,0, 64, 32, PROTOBITE1_bits[0],old_colour, true);
+          delay(200);
+          dma_display->clearScreen();
+          simple_RGB_render(64,0, 64, 32, PROTOBITE1_bits[1], old_colour);
+          simple_RGB_render(0,0, 64, 32, PROTOBITE1_bits[1],old_colour, true);
+          delay(200);
+          dma_display->clearScreen();
+          simple_RGB_render(64,0, 64, 32, PROTOBITE1_bits[2], old_colour);
+          simple_RGB_render(0,0, 64, 32, PROTOBITE1_bits[2],old_colour, true);
+          delay(200);
+          dma_display->clearScreen();
+          simple_RGB_render(64,0, 64, 32, PROTOBITE1_bits[3], old_colour);
+          simple_RGB_render(0,0, 64, 32, PROTOBITE1_bits[3],old_colour, true);
         break;
         case 4:
+          //runAnimation(2);
+        break;
+        case 5:
           //displayText("Not Cute >:(");
           //renderFrame(newBlinking[0]);
         break;
-        case 5: //Crosses
+        case 6: //Crosses
           //renderPartical(cross);
         break;
-        case 6: //Hearts
+        case 7: //Hearts
           //renderPartical(heart);
         break;
-        case 7: 
-          //Green = 0;
-          //Red = 255;
-          //Blue = 0;
-          //displayText("Happy Bday Lucian");
-        
-          //runAnimation(2);
-          //straightLineRender(newBlinking[0]);
+        case 8: 
+              display_text("Monty Ren  Roxie LuksCyrus AngelNifty Hex Lucian RookSaber Patch  Cloudy  Love all");
         break;
-        case 8:
+        case 9:
           //displayText("<3 Nuzzles <3");
           //straightLineRender(newBlinking[0]);
         break; 
-        case 9:
+        case 10:
           returnToMainMenu();
         break;
       }
@@ -641,7 +634,7 @@ void moveToMenu()
             // }
           break;
           case 7:
-           // displayStaticText("AFK");
+            display_text_afk();
             //is_blinking = false;
           break;
           case 8:
@@ -653,7 +646,68 @@ void moveToMenu()
   
 }
 
+void animation_bite()
+{
+    dma_display->clearScreen();
+    simple_RGB_render(64,0, 64, 32, PROTOBITE1_bits[0], old_colour);
+    simple_RGB_render(0,0, 64, 32, PROTOBITE1_bits[0],old_colour, true);
+    delay(200);
+      dma_display->clearScreen();
+    simple_RGB_render(64,0, 64, 32, PROTOBITE1_bits[1], old_colour);
+    simple_RGB_render(0,0, 64, 32, PROTOBITE1_bits[1],old_colour, true);
+    delay(200);
+      dma_display->clearScreen();
+    simple_RGB_render(64,0, 64, 32, PROTOBITE1_bits[2], old_colour);
+    simple_RGB_render(0,0, 64, 32, PROTOBITE1_bits[2],old_colour, true);
+    delay(200);
+      dma_display->clearScreen();
+    simple_RGB_render(64,0, 64, 32, PROTOBITE1_bits[3], old_colour);
+    simple_RGB_render(0,0, 64, 32, PROTOBITE1_bits[3],old_colour, true);
+    delay(1000);
+    dma_display->clearScreen();
+    simple_RGB_render(64,0, 64, 32, PROTOBITE1_bits[2], old_colour);
+    simple_RGB_render(0,0, 64, 32, PROTOBITE1_bits[2],old_colour, true);
 
+    delay(20);
+    dma_display->clearScreen();
+    simple_RGB_render(64,0, 64, 32, PROTOBITE1_bits[1], old_colour);
+    simple_RGB_render(0,0, 64, 32, PROTOBITE1_bits[1],old_colour, true);
+    delay(10);
+    dma_display->clearScreen();
+    simple_RGB_render(64,0, 64, 32, PROTOBITE1_bits[0], old_colour);
+    simple_RGB_render(0,0, 64, 32, PROTOBITE1_bits[0],old_colour, true);
+    delay(10);
+    dma_display->clearScreen();
+    simple_RGB_render(64,0, 64, 32, default_smile, old_colour);
+    simple_RGB_render(0,0, 64, 32, default_smile,old_colour, true);
+    delay(500);
+
+}
+
+void reset_face()
+{
+  dma_display->clearScreen();
+  top_down_animation(old_colour);
+}
+
+void display_text(const char* text)
+{
+  dma_display->clearScreen();
+  dma_display->setTextSize(1);   
+  dma_display->setCursor(0, 0); //X offset, Y offset
+  dma_display->println(text);
+}
+
+void display_text_afk()
+{
+  dma_display->clearScreen();
+  dma_display->setTextSize(3);   
+  dma_display->setCursor(0, 0); //X offset, Y offset
+  dma_display->println("AFK!");
+  dma_display->setCursor(64, 0);
+  dma_display->println("AFK!");
+
+}
 
 void setup() {
 
@@ -752,7 +806,6 @@ if (connected) {
   {
      top_down_animation(new_colour);
      old_colour = new_colour;
-     Serial.println("should run once");
   }
 
 }
